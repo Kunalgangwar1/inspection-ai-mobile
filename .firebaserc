@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "inspection-ai-dev-12345"
+  },
+  "targets": {
+    "inspection-ai-dev-12345": {
+      "storage": {
+        "raw-media": [
+          "inspection-ai-dev-12345-raw-media"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

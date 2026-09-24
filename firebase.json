@@ -1,0 +1,8 @@
+{
+  "storage": [
+    {
+      "target": "raw-media",
+      "rules": "storage.rules"
+    }
+  ]
+}

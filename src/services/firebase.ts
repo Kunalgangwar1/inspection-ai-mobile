@@ -7,6 +7,9 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+const RAW_MEDIA_BUCKET = 'gs://inspection-ai-dev-12345-raw-media';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -50,3 +53,4 @@ function getFirebaseAuth(): Auth {
 
 export const auth = getFirebaseAuth();
 export const db = getFirestore(app);
+export const rawMediaStorage = getStorage(app, RAW_MEDIA_BUCKET);

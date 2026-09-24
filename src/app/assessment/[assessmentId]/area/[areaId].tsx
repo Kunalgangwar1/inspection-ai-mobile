@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,8 +12,38 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAreaById } from '@/constants/areas';
+import {
+  getMediaUploadErrorMessage,
+  isMediaUploadCanceled,
+  startMediaUpload,
+  type MediaUploadOperation,
+} from '@/services/mediaUpload';
 import type { MediaFile } from '@/types/media';
 import { mediaFileFromRecordedUri } from '@/utils/media';
+
+type UploadStatus =
+  | 'idle'
+  | 'uploading'
+  | 'canceling'
+  | 'complete'
+  | 'canceled'
+  | 'error';
+
+type UploadViewState = Readonly<{
+  mediaUri: string | null;
+  status: UploadStatus;
+  progress: number;
+  objectPath: string | null;
+  error: string | null;
+}>;
+
+const EMPTY_UPLOAD_STATE: UploadViewState = {
+  mediaUri: null,
+  status: 'idle',
+  progress: 0,
+  objectPath: null,
+  error: null,
+};
 
 function normalizeVideo(asset: ImagePicker.ImagePickerAsset): MediaFile {
   return {
@@ -54,13 +84,41 @@ export default function AreaScreen() {
   const [localVideo, setLocalVideo] = useState<MediaFile | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [uploadState, setUploadState] =
+    useState<UploadViewState>(EMPTY_UPLOAD_STATE);
+  const uploadOperationRef = useRef<MediaUploadOperation | null>(null);
+  const mountedRef = useRef(true);
   const selectedVideo = recordedUri
     ? mediaFileFromRecordedUri(recordedUri)
     : localVideo;
+  const currentUploadState =
+    uploadState.mediaUri === (selectedVideo?.uri ?? null)
+      ? uploadState
+      : EMPTY_UPLOAD_STATE;
+  const isUploading =
+    uploadState.status === 'uploading' ||
+    uploadState.status === 'canceling';
+  const progressWidth =
+    `${Math.round(currentUploadState.progress)}%` as `${number}%`;
+
+  useEffect(() => {
+    const operationRef = uploadOperationRef;
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      operationRef.current?.cancel();
+    };
+  }, []);
+
+  function resetUploadState() {
+    setUploadState(EMPTY_UPLOAD_STATE);
+  }
 
   async function selectVideo() {
     setIsPicking(true);
     setPickerError(null);
+    resetUploadState();
 
     try {
       let permission = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -114,15 +172,111 @@ export default function AreaScreen() {
   function removeVideo() {
     setLocalVideo(null);
     setPickerError(null);
+    resetUploadState();
     router.setParams({ recordedUri: undefined });
   }
 
   function recordVideo() {
     setPickerError(null);
+    resetUploadState();
     router.push({
       pathname: '/assessment/[assessmentId]/area/camera',
       params: { assessmentId, areaId },
     });
+  }
+
+  async function uploadVideo() {
+    if (uploadOperationRef.current || isUploading) {
+      return;
+    }
+
+    if (!selectedVideo) {
+      setUploadState({
+        ...EMPTY_UPLOAD_STATE,
+        status: 'error',
+        error: 'Select or record a video before uploading.',
+      });
+      return;
+    }
+
+    if (!area) {
+      setUploadState({
+        ...EMPTY_UPLOAD_STATE,
+        mediaUri: selectedVideo.uri,
+        status: 'error',
+        error: 'The area ID is not supported by the backend.',
+      });
+      return;
+    }
+
+    const mediaUri = selectedVideo.uri;
+
+    try {
+      const operation = startMediaUpload({
+        assessmentId,
+        areaId: area.id,
+        media: selectedVideo,
+        onProgress: ({ percentage }) => {
+          if (!mountedRef.current) {
+            return;
+          }
+
+          setUploadState((current) =>
+            current.mediaUri === mediaUri
+              ? { ...current, progress: percentage }
+              : current,
+          );
+        },
+      });
+
+      uploadOperationRef.current = operation;
+      setUploadState({
+        mediaUri,
+        status: 'uploading',
+        progress: 0,
+        objectPath: operation.objectPath,
+        error: null,
+      });
+
+      await operation.completion;
+
+      if (!mountedRef.current) {
+        return;
+      }
+
+      setUploadState({
+        mediaUri,
+        status: 'complete',
+        progress: 100,
+        objectPath: operation.objectPath,
+        error: null,
+      });
+    } catch (error: unknown) {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      setUploadState((current) => ({
+        ...current,
+        mediaUri,
+        status: isMediaUploadCanceled(error) ? 'canceled' : 'error',
+        error: getMediaUploadErrorMessage(error),
+      }));
+    } finally {
+      uploadOperationRef.current = null;
+    }
+  }
+
+  function cancelUpload() {
+    if (!uploadOperationRef.current?.cancel()) {
+      return;
+    }
+
+    setUploadState((current) => ({
+      ...current,
+      status: 'canceling',
+      error: null,
+    }));
   }
 
   return (
@@ -186,12 +340,15 @@ export default function AreaScreen() {
                     </>
                   ) : null}
 
-                  <Text style={styles.readyText}>Ready for upload</Text>
+                  <Text style={styles.readyText}>
+                    {currentUploadState.status === 'complete'
+                      ? 'Upload complete - processing'
+                      : 'Ready for upload'}
+                  </Text>
                 </View>
               ) : (
                 <Text style={styles.mediaHelp}>
-                  Select one existing video or record a new video. Nothing will
-                  be uploaded in this phase.
+                  Select one existing video or record a new video to upload.
                 </Text>
               )}
 
@@ -204,12 +361,12 @@ export default function AreaScreen() {
               <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
-                  disabled={isPicking}
+                  disabled={isPicking || isUploading}
                   onPress={selectVideo}
                   style={({ pressed }) => [
                     styles.primaryButton,
                     pressed && styles.buttonPressed,
-                    isPicking && styles.buttonDisabled,
+                    (isPicking || isUploading) && styles.buttonDisabled,
                   ]}>
                   {isPicking ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
@@ -225,12 +382,12 @@ export default function AreaScreen() {
 
                 <Pressable
                   accessibilityRole="button"
-                  disabled={isPicking}
+                  disabled={isPicking || isUploading}
                   onPress={recordVideo}
                   style={({ pressed }) => [
                     styles.outlineButton,
                     pressed && styles.buttonPressed,
-                    isPicking && styles.buttonDisabled,
+                    (isPicking || isUploading) && styles.buttonDisabled,
                   ]}>
                   <Text style={styles.outlineButtonText}>Record Video</Text>
                 </Pressable>
@@ -238,17 +395,103 @@ export default function AreaScreen() {
                 {selectedVideo ? (
                   <Pressable
                     accessibilityRole="button"
-                    disabled={isPicking}
+                    disabled={isPicking || isUploading}
                     onPress={removeVideo}
                     style={({ pressed }) => [
                       styles.removeButton,
                       pressed && styles.buttonPressed,
-                      isPicking && styles.buttonDisabled,
+                      (isPicking || isUploading) && styles.buttonDisabled,
                     ]}>
                     <Text style={styles.removeButtonText}>Remove Video</Text>
                   </Pressable>
                 ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={
+                    isPicking ||
+                    isUploading ||
+                    currentUploadState.status === 'complete'
+                  }
+                  onPress={uploadVideo}
+                  style={({ pressed }) => [
+                    styles.uploadButton,
+                    pressed && styles.buttonPressed,
+                    (isPicking ||
+                      isUploading ||
+                      currentUploadState.status === 'complete') &&
+                      styles.buttonDisabled,
+                  ]}>
+                  {isUploading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : null}
+                  <Text style={styles.uploadButtonText}>
+                    {currentUploadState.status === 'complete'
+                      ? 'Uploaded'
+                      : isUploading
+                        ? 'Uploading...'
+                        : 'Upload Video'}
+                  </Text>
+                </Pressable>
+
+                {isUploading ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={uploadState.status === 'canceling'}
+                    onPress={cancelUpload}
+                    style={({ pressed }) => [
+                      styles.cancelUploadButton,
+                      pressed && styles.buttonPressed,
+                      uploadState.status === 'canceling' &&
+                        styles.buttonDisabled,
+                    ]}>
+                    <Text style={styles.cancelUploadButtonText}>
+                      {uploadState.status === 'canceling'
+                        ? 'Canceling...'
+                        : 'Cancel Upload'}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
+
+              {currentUploadState.status === 'uploading' ||
+              currentUploadState.status === 'canceling' ? (
+                <View style={styles.progressSection}>
+                  <View
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{
+                      min: 0,
+                      max: 100,
+                      now: Math.round(currentUploadState.progress),
+                    }}
+                    style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: progressWidth },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {Math.round(currentUploadState.progress)}%
+                  </Text>
+                </View>
+              ) : null}
+
+              {currentUploadState.error ? (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {currentUploadState.error}
+                </Text>
+              ) : null}
+
+              {currentUploadState.objectPath ? (
+                <View style={styles.debugSection}>
+                  <Text style={styles.debugLabel}>Storage object path</Text>
+                  <Text selectable style={styles.debugPath}>
+                    {currentUploadState.objectPath}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         ) : (
@@ -428,6 +671,74 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 16,
     fontWeight: '700',
+  },
+  uploadButton: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: '#047857',
+  },
+  uploadButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cancelUploadButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  cancelUploadButtonText: {
+    color: '#374151',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  progressSection: {
+    marginTop: 18,
+    gap: 8,
+  },
+  progressTrack: {
+    height: 10,
+    overflow: 'hidden',
+    borderRadius: 5,
+    backgroundColor: '#D1D5DB',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: '#059669',
+  },
+  progressText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  debugSection: {
+    marginTop: 18,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#F9FAFB',
+  },
+  debugLabel: {
+    color: '#6B7280',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  debugPath: {
+    marginTop: 5,
+    color: '#4B5563',
+    fontSize: 11,
+    lineHeight: 16,
   },
   buttonPressed: {
     opacity: 0.8,

@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /{uploadRoot}/{area}/{fileName} {
+      allow create: if
+        request.auth != null
+        && uploadRoot.matches('^[A-Za-z0-9-]+_[A-Za-z0-9-]+_video$')
+        && (
+          area == 'exterior'
+          || area == 'lobby'
+          || area == 'walk-in'
+          || area == 'backroom'
+          || area == 'production'
+        )
+        && fileName == 'video_' + area + '.mp4'
+        && request.resource.contentType == 'video/mp4';
+
+      allow get, list, update, delete: if false;
+    }
+  }
+}
