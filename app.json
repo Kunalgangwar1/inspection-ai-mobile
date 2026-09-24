@@ -11,9 +11,16 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow AI Inspection to choose an existing video for this assessment.",
-          "cameraPermission": false,
-          "microphonePermission": false
+          "photosPermission": "Allow AI Inspection to choose an existing video for this assessment."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AI Inspection to record assessment videos.",
+          "microphonePermission": "Allow AI Inspection to record audio with assessment videos.",
+          "recordAudioAndroid": true,
+          "barcodeScannerEnabled": false
         }
       ]
     ],

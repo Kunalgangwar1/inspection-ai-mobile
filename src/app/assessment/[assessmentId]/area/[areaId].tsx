@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAreaById } from '@/constants/areas';
 import type { MediaFile } from '@/types/media';
+import { mediaFileFromRecordedUri } from '@/utils/media';
 
 function normalizeVideo(asset: ImagePicker.ImagePickerAsset): MediaFile {
   return {
@@ -44,14 +45,18 @@ function formatFileSize(bytes: number) {
 
 export default function AreaScreen() {
   const router = useRouter();
-  const { assessmentId, areaId } = useLocalSearchParams<{
+  const { assessmentId, areaId, recordedUri } = useLocalSearchParams<{
     assessmentId: string;
     areaId: string;
+    recordedUri?: string;
   }>();
   const area = getAreaById(areaId);
-  const [selectedVideo, setSelectedVideo] = useState<MediaFile | null>(null);
+  const [localVideo, setLocalVideo] = useState<MediaFile | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const selectedVideo = recordedUri
+    ? mediaFileFromRecordedUri(recordedUri)
+    : localVideo;
 
   async function selectVideo() {
     setIsPicking(true);
@@ -97,7 +102,8 @@ export default function AreaScreen() {
         return;
       }
 
-      setSelectedVideo(normalizeVideo(asset));
+      setLocalVideo(normalizeVideo(asset));
+      router.setParams({ recordedUri: undefined });
     } catch {
       setPickerError('Unable to open the video picker. Please try again.');
     } finally {
@@ -106,8 +112,17 @@ export default function AreaScreen() {
   }
 
   function removeVideo() {
-    setSelectedVideo(null);
+    setLocalVideo(null);
     setPickerError(null);
+    router.setParams({ recordedUri: undefined });
+  }
+
+  function recordVideo() {
+    setPickerError(null);
+    router.push({
+      pathname: '/assessment/[assessmentId]/area/camera',
+      params: { assessmentId, areaId },
+    });
   }
 
   return (
@@ -139,7 +154,7 @@ export default function AreaScreen() {
             </Text>
 
             <View style={styles.mediaSection}>
-              <Text style={styles.mediaHeading}>Existing video</Text>
+              <Text style={styles.mediaHeading}>Video</Text>
 
               {selectedVideo ? (
                 <View style={styles.mediaDetails}>
@@ -171,12 +186,12 @@ export default function AreaScreen() {
                     </>
                   ) : null}
 
-                  <Text style={styles.readyText}>Ready for future upload</Text>
+                  <Text style={styles.readyText}>Ready for upload</Text>
                 </View>
               ) : (
                 <Text style={styles.mediaHelp}>
-                  Choose one video already stored on this device. Nothing will be
-                  uploaded in this phase.
+                  Select one existing video or record a new video. Nothing will
+                  be uploaded in this phase.
                 </Text>
               )}
 
@@ -208,17 +223,29 @@ export default function AreaScreen() {
                   </Text>
                 </Pressable>
 
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isPicking}
+                  onPress={recordVideo}
+                  style={({ pressed }) => [
+                    styles.outlineButton,
+                    pressed && styles.buttonPressed,
+                    isPicking && styles.buttonDisabled,
+                  ]}>
+                  <Text style={styles.outlineButtonText}>Record Video</Text>
+                </Pressable>
+
                 {selectedVideo ? (
                   <Pressable
                     accessibilityRole="button"
                     disabled={isPicking}
                     onPress={removeVideo}
                     style={({ pressed }) => [
-                      styles.secondaryButton,
+                      styles.removeButton,
                       pressed && styles.buttonPressed,
                       isPicking && styles.buttonDisabled,
                     ]}>
-                    <Text style={styles.secondaryButtonText}>Remove Video</Text>
+                    <Text style={styles.removeButtonText}>Remove Video</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -372,7 +399,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  secondaryButton: {
+  outlineButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  outlineButtonText: {
+    color: '#1D4ED8',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  removeButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
@@ -382,7 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
   },
-  secondaryButtonText: {
+  removeButtonText: {
     color: '#B91C1C',
     fontSize: 16,
     fontWeight: '700',
