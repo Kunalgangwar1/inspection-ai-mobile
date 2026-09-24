@@ -1,8 +1,27 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/providers/AuthProvider';
+
 export default function HomeScreen() {
+  const { user, signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    setErrorMessage(null);
+
+    try {
+      await signOut();
+    } catch {
+      setErrorMessage('Unable to sign out. Please try again.');
+      setSigningOut(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
@@ -11,6 +30,31 @@ export default function HomeScreen() {
         <Text style={styles.title}>AI Inspection</Text>
         <Text style={styles.subtitle}>Mobile Frontend</Text>
         <Text style={styles.status}>Phase 1 - Environment Ready</Text>
+        <Text style={styles.account}>
+          Signed in as {user?.email ?? 'authenticated user'}
+        </Text>
+
+        {errorMessage ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {errorMessage}
+          </Text>
+        ) : null}
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={signingOut}
+          onPress={() => void handleSignOut()}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            signingOut && styles.logoutButtonDisabled,
+            pressed && !signingOut && styles.logoutButtonPressed,
+          ]}>
+          {signingOut ? (
+            <ActivityIndicator color="#1D4ED8" />
+          ) : (
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          )}
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -59,5 +103,39 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  account: {
+    marginTop: 18,
+    color: '#6B7280',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  error: {
+    marginTop: 16,
+    color: '#B91C1C',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    minWidth: 140,
+    minHeight: 48,
+    marginTop: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  logoutButtonDisabled: {
+    opacity: 0.6,
+  },
+  logoutButtonPressed: {
+    backgroundColor: '#EFF6FF',
+  },
+  logoutButtonText: {
+    color: '#1D4ED8',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
