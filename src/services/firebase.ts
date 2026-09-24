@@ -6,6 +6,7 @@ import {
   initializeAuth,
   type Auth,
 } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -48,3 +49,4 @@ function getFirebaseAuth(): Auth {
 }
 
 export const auth = getFirebaseAuth();
+export const db = getFirestore(app);
