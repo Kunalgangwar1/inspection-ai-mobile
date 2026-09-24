@@ -1,0 +1,779 @@
+[
+  {
+    "id": "ext_parking_lot_landscaping_including",
+    "name": "Parking Lot & Landscaping",
+    "area": "Exterior & Parking Lot",
+    "required_evidence": [
+      {
+        "id": "ext_parking_lot_count_cigarette_butts_trash",
+        "description": "Count of cigarette butts, trash, debris, or weeds is below the acceptable threshold (fewer than 4 for multi-unit/end-cap, fewer than 6 for standalone)."
+      },
+      {
+        "id": "ext_parking_lot_sidewalks_free_major_cracks",
+        "description": "Sidewalks are free of major cracks or crumbling concrete that pose safety risks."
+      },
+      {
+        "id": "ext_parking_lot_dumpster_area_clean_overflowing",
+        "description": "Dumpster area is clean, with no overflowing waste or excessive debris."
+      },
+      {
+        "id": "ext_parking_lot_dumpster_corral_good_condition",
+        "description": "Dumpster corral is in good condition."
+      },
+      {
+        "id": "ext_parking_lot_parking_lot_lines_faded",
+        "description": "Parking lot lines are not faded or missing and appear unbroken and visible."
+      }
+    ]
+  },
+  {
+    "id": "ext_building_property_condition_not",
+    "name": "Building & Property Condition",
+    "area": "Exterior & Parking Lot",
+    "required_evidence": [
+      {
+        "id": "ext_buildingproperty_condition_exterior_walls_good_repair",
+        "description": "Exterior walls are in good repair with no excessive paint discoloration, chipping, graffiti, or damage."
+      },
+      {
+        "id": "ext_buildingproperty_condition_exterior_lights_clean_functional",
+        "description": "Exterior lights are clean, functional, and on at night."
+      },
+      {
+        "id": "ext_buildingproperty_condition_soffits_awnings_present_intact",
+        "description": "Soffits and awnings (if present) are intact, clean, and free of major holes."
+      },
+      {
+        "id": "ext_buildingproperty_condition_excessive_mildew_buildup_visible",
+        "description": "No excessive mildew buildup is visible on the building exterior."
+      },
+      {
+        "id": "ext_buildingproperty_condition_present_drivethru_bell_operational",
+        "description": "If present, the drive-thru bell is operational."
+      },
+      {
+        "id": "ext_buildingproperty_condition_present_exterior_trash_can",
+        "description": "If present, the exterior trash can is clean, lined, and not overflowing."
+      }
+    ]
+  },
+  {
+    "id": "ext_windows_windowsills_doors_front",
+    "name": "Windows, Windowsills & Doors",
+    "area": "Exterior & Parking Lot",
+    "required_evidence": [
+      {
+        "id": "ext_windows_windowsills_customerfacing_doors_thresholds_windows",
+        "description": "Customer-facing doors, thresholds, windows, and sills are free of dust, debris, excessive streaks, and tape residue."
+      },
+      {
+        "id": "ext_windows_windowsills_doors_function_properly_unlocked",
+        "description": "Doors function properly, are unlocked during operating hours, and have a 'door sweep' to prevent pests."
+      },
+      {
+        "id": "ext_windows_windowsills_passthrough_windows_clean_working",
+        "description": "Pass-through windows are clean and in working condition."
+      },
+      {
+        "id": "ext_windows_windowsills_windows_cracks_good_condition",
+        "description": "Windows have no cracks and are in good condition."
+      }
+    ]
+  },
+  {
+    "id": "ext_signage_approved_working_good",
+    "name": "Signage",
+    "area": "Exterior & Parking Lot",
+    "required_evidence": [
+      {
+        "id": "ext_signage_approved_exterior_pop_signage_good",
+        "description": "All exterior and POP signage must appear intact, properly installed, and fully functional. Illuminated elements (such as neon tubing or light outlines) must be continuous and undamaged, without visible breaks, bending, misalignment, missing sections, or non-functioning segments."
+      },
+      {
+        "id": "ext_signage_approved_outdated_expired_promotional_materials",
+        "description": "No outdated or expired promotional materials are visible."
+      },
+      {
+        "id": "ext_signage_approved_signs_free_stains_dirt",
+        "description": "Signs are free of stains, dirt buildup, and broken or damaged lettering."
+      },
+      {
+        "id": "ext_signage_approved_bulbs_signage_functional",
+        "description": "All bulbs in signage are functional."
+      },
+      {
+        "id": "ext_signage_approved_any_operatorproduced_signage_professiona",
+        "description": "Any operator-produced signage is professionally printed with the current logo."
+      }
+    ]
+  },
+  {
+    "id": "lob_lobby_floors_floor_mats",
+    "name": "Lobby Floors & Floor Mats",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_lobby_floors_customeraccessible_floors_baseboards_rug",
+        "description": "Customer-accessible floors, baseboards, and rugs are clean with no visible buildup."
+      },
+      {
+        "id": "lob_lobby_floors_broken_tiles_cracks_larger",
+        "description": "No broken tiles or cracks larger than a quarter are visible."
+      },
+      {
+        "id": "lob_lobby_floors_mats_good_condition_free",
+        "description": "Mats are in good condition, free of rips, tears, and excessive fading."
+      },
+      {
+        "id": "lob_lobby_floors_seating_furniture_good_condition",
+        "description": "Seating furniture is in good condition, intact, and free of dust, stains, dirt, fading, or rust."
+      }
+    ]
+  },
+  {
+    "id": "lob_lobby_ceiling_vents",
+    "name": "Lobby Ceiling & Vents",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_lobby_ceiling_ceiling_tiles_grids_vents",
+        "description": "Ceiling tiles, grids, vents, diffusers, light lenses, and bulbs are in good condition, intact, and free of dust, stains, dirt, or rust."
+      },
+      {
+        "id": "lob_lobby_ceiling_holes_visible_ceiling",
+        "description": "No holes are visible in the ceiling."
+      },
+      {
+        "id": "lob_lobby_ceiling_cameras_clean_good_condition",
+        "description": "Cameras are clean and in good condition with no exposed wiring."
+      },
+      {
+        "id": "lob_lobby_ceiling_lights_operational_free_bugs",
+        "description": "All lights are operational and free of bugs."
+      }
+    ]
+  },
+  {
+    "id": "lob_lobby_walls_front_counter",
+    "name": "Lobby Walls & Front Counter",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_lobby_walls_front_counter_related_components",
+        "description": "Front counter and related components (terminals, readers) are clean, functional, and organized."
+      },
+      {
+        "id": "lob_lobby_walls_counter_dough_show_glass",
+        "description": "Counter, dough show glass, and walls are free of fading, tape, cracks, smudges, or holes larger than a quarter."
+      },
+      {
+        "id": "lob_lobby_walls_interior_signs_awards_permits",
+        "description": "Interior signs, awards, and permits are clean, functional, and up-to-date."
+      }
+    ]
+  },
+  {
+    "id": "lob_menu_pop_kit_clean",
+    "name": "Menu/POP Kit",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_menupop_kit_present_menu_boards_clean",
+        "description": "If present, menu boards are clean and free of dirt, smudges, or buildup."
+      },
+      {
+        "id": "lob_menupop_kit_unapproved_damaged_menu_boards",
+        "description": "If present, menu boards and POP materials are clean and undamaged (no tears, cracks, fading, or physical damage)."
+      },
+      {
+        "id": "lob_menupop_kit_window_clings_visible_excessive",
+        "description": "Window clings appear smooth and properly adhered, with no visible air bubbles, wrinkles, lifting edges, or peeling."
+      }
+    ]
+  },
+  {
+    "id": "lob_pepsi_cooler",
+    "name": "Pepsi Cooler",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_pepsi_cooler_cooler_working_condition_clean",
+        "description": "Cooler is in working condition, clean, and free of streaks or buildup."
+      },
+      {
+        "id": "lob_pepsi_cooler_expired_products_present_cooler",
+        "description": "No expired products are present in the cooler."
+      },
+      {
+        "id": "lob_pepsi_cooler_cooler_stocked_appropriately_based",
+        "description": "Cooler shelves have no empty rows and no visible gaps, and all visible products are front-faced."
+      }
+    ]
+  },
+  {
+    "id": "multi_brand_identity",
+    "name": "Brand Identity",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_brand_identity_imagery_approved_uptodate",
+        "description": "Imagery is approved and up-to-date."
+      },
+      {
+        "id": "lob_brand_identity_previous_brand_identity_communications",
+        "description": "All previous brand identity communications (e.g., old values, old mission statements) have been removed."
+      }
+    ]
+  },
+  {
+    "id": "lob_customer_greeting_customer_welcomed",
+    "name": "Customer Greeting",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_customer_greeting_timestamp_stopwatch_showing_customer",
+        "description": "Timestamp or stopwatch showing the customer is greeted within 10 seconds."
+      }
+    ]
+  },
+  {
+    "id": "multi_hvac",
+    "name": "HVAC",
+    "area": "Lobby & Entry",
+    "required_evidence": [
+      {
+        "id": "lob_hvac_hvac_system_good_working",
+        "description": "HVAC system is in good working order."
+      },
+      {
+        "id": "lob_hvac_thermometer_reading_showing_comfortable",
+        "description": "A visible wall-mounted thermostat showing the restaurant’s temperature. Mark COMPLIANT only when the temperature is clearly legible and at or below 85°F. Mark NON-COMPLIANT when the temperature is clearly legible and above 85°F. If the thermostat is visible but the temperature cannot be read with high confidence due to faint digits, partial illumination, glare, or display artifacts, treat the evidence as insufficient."
+      }
+    ]
+  },
+  {
+    "id": "wal_walk_clean_good_repair",
+    "name": "Walk-in Cleanliness & Condition",
+    "area": "Walk-in & Dry Storage",
+    "required_evidence": [
+      {
+        "id": "walk_walkin_clean_surfaces_walls_ceiling_shelves",
+        "description": "All visible surfaces (including walls, ceiling, shelves, floors) are clean and in good repair."
+      },
+      {
+        "id": "walk_walkin_clean_calibrated_thermometer_present_visible",
+        "description": "A calibrated thermometer is present and visible."
+      },
+      {
+        "id": "walk_walkin_clean_buildup_dust_dirt_mold",
+        "description": "No visible accumulation of dust, dirt, mold, residue, or rust is present on shelves, including along weld joints, support bars, or structural seams."
+      },
+      {
+        "id": "walk_walkin_clean_walkin_door_functional_seals",
+        "description": "Walk-in door is functional and seals airtight when closed."
+      },
+      {
+        "id": "walk_walkin_clean_gaskets_curtains_free_mold",
+        "description": "Gaskets and curtains are free of mold, rips, and tears."
+      },
+      {
+        "id": "walk_walkin_clean_any_personal_food_stored",
+        "description": "Any personal food is stored in a separate labeled container below PJI product."
+      }
+    ]
+  },
+  {
+    "id": "walkin_temperature",
+    "name": "Walk-in Temperature",
+    "area": "Walk-in & Dry Storage",
+    "required_evidence": [
+      {
+        "id": "walkin_temperature_reading_product",
+        "description": "Temperature reading of at least one product from the walk-in."
+      },
+      {
+        "id": "walkin_temperature_range_33_40",
+        "description": "Temperature reading is between 33°-40° F."
+      }
+    ]
+  },
+  {
+    "id": "multi_prep_dry_storage_area",
+    "name": "Prep & Dry Storage",
+    "area": "Walk-in & Dry Storage",
+    "required_evidence": [
+      {
+        "id": "back_prep_dry_prep_area_clean_free",
+        "description": "Dry preparation area work surfaces and equipment exteriors are visibly clean, free of residue, food debris, grease, dust accumulation, or discoloration on primary contact surfaces."
+      },
+      {
+        "id": "back_prep_dry_dry_storage_shelves_clean",
+        "description": "Dry storage shelves are visibly clean and organized, with no visible accumulation of dust, residue, mold, rust, or debris on shelf surfaces, support bars, or joints."
+      },
+      {
+        "id": "back_prep_dry_floors_baseboards_walls_good",
+        "description": "Floors, baseboards, and walls are intact and in good repair, with no missing tiles, cracks, structural damage, stains, or visible buildup on primary surfaces."
+      }
+    ]
+  },
+  {
+    "id": "food_storage",
+    "name": "Food Storage",
+    "area": "Walk-in & Dry Storage",
+    "required_evidence": [
+      {
+        "id": "walk_food_stored_food_stored_least_inches",
+        "description": "All food products and food containers are visibly stored at least 6 inches off the floor on approved shelving, racks, or platforms. No food items, boxes, trays, or containers are in direct contact with the floor or stored below the required clearance."
+      },
+      {
+        "id": "walk_dough_trays_dough_trays_only_being",
+        "description": "Dough trays are only being used for storing dough."
+      }
+    ]
+  },
+  {
+    "id": "bac_restroom_areas",
+    "name": "Restroom Areas",
+    "area": "Restrooms & Back of House",
+    "required_evidence": [
+      {
+        "id": "back_restroom_areas_toilet_sink_mirror_clean",
+        "description": "Toilet, sink, and mirror are clean, fully stocked, and operational."
+      },
+      {
+        "id": "back_restroom_areas_walls_floors_ceiling_shelving",
+        "description": "Walls, floors, ceiling, and shelving are clean and in good condition."
+      },
+      {
+        "id": "back_restroom_areas_dispensers_paper_towels_toilet",
+        "description": "All dispensers (paper towels, toilet paper, soap) are operational and stocked with antibacterial soap."
+      },
+      {
+        "id": "back_restroom_areas_hot_water_functional_sinks",
+        "description": "Hot water is functional in all sinks."
+      },
+      {
+        "id": "back_restroom_areas_toilet_paper_properly_placed",
+        "description": "For ALL restrooms and toilets visible in the image or video, toilet paper must be installed on the designated holder spindle and positioned for normal dispensing. If any restroom or toilet shows improper placement, the item is non-compliant."
+      }
+    ]
+  },
+  {
+    "id": "multi_hand_sinks_soap_dispensers",
+    "name": "Hand Sinks & Hygiene",
+    "area": "Restrooms & Back of House",
+    "required_evidence": [
+      {
+        "id": "prod_hand_sinks_soap_antibacterial",
+        "description": "Soap is anti-bacterial."
+      },
+      {
+        "id": "prod_hand_sinks_observation_team_member_washing",
+        "description": "Observation of a team member washing hands for 20 seconds with soap and running water."
+      },
+      {
+        "id": "prod_hand_sinks_team_members_wash_hands",
+        "description": "Team members wash hands after handling tills, phones, or non-work surfaces."
+      }
+    ]
+  },
+  {
+    "id": "multi_compartment_sink_fully_functional",
+    "name": "3-Compartment Sink",
+    "area": "Restrooms & Back of House",
+    "required_evidence": [
+      {
+        "id": "back_3compartment_sink_team_member_can_explain",
+        "description": "Team member can explain how to set up the 3-compartment sink."
+      },
+      {
+        "id": "back_3compartment_sink_sink_clean_organized_free",
+        "description": "Sink is clean, organized, and free of buildup, with stocked soap and sanitizer dispensers."
+      },
+      {
+        "id": "back_3compartment_sink_hot_water_functional_verified",
+        "description": "Hot water is functional and verified."
+      },
+      {
+        "id": "back_3compartment_sink_sanitation_test_strips_available",
+        "description": "Sanitation test strips are available and not expired."
+      }
+    ]
+  },
+  {
+    "id": "bac_pest_control_service_is",
+    "name": "Pest Control",
+    "area": "Restrooms & Back of House",
+    "required_evidence": [
+      {
+        "id": "back_pest_control_image_pest_control_service",
+        "description": "Image of a pest control service invoice (paper or digital)."
+      },
+      {
+        "id": "back_pest_control_invoice_dated_within_last",
+        "description": "The invoice is dated within the last 3 months."
+      }
+    ]
+  },
+  {
+    "id": "health_inspection",
+    "name": "Health Inspection",
+    "area": "Restrooms & Back of House",
+    "required_evidence": [
+      {
+        "id": "gen_local_authority_image_most_recent_health",
+        "description": "Image of the most recent health inspection report (paper or digital)."
+      },
+      {
+        "id": "gen_local_authority_confirmation_any_critical_items",
+        "description": "Confirmation that any critical items noted on reports older than 30 days have been resolved."
+      }
+    ]
+  },
+  {
+    "id": "multi_production_area_floors",
+    "name": "Production Area Floors",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "multi_production_area_floors_under_around_behind",
+        "description": "Floors under, around, and behind the makeline, oven, and cut table are free of excessive sauce, food, water, or buildup."
+      },
+      {
+        "id": "multi_production_area_cracks_can_collect_debris",
+        "description": "No cracks that can collect debris or holes larger than a quarter are visible."
+      }
+    ]
+  },
+  {
+    "id": "multi_production_area_ceilings_vents",
+    "name": "Production Area Ceilings & Vents",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "multi_production_area_ceiling_tiles_grids_vents",
+        "description": "Ceiling tiles, grids, vents, and lights are in good condition, free of dust, stains, dirt, or rust."
+      },
+      {
+        "id": "multi_production_area_lights_operational_free_bugs",
+        "description": "All lights are operational and free of bugs."
+      },
+      {
+        "id": "multi_production_area_yellowing_visible_ceiling_walls",
+        "description": "No yellowing is visible on the ceiling or walls."
+      }
+    ]
+  },
+  {
+    "id": "multi_production_area_walls",
+    "name": "Production Area Walls",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "multi_production_area_walls_clean_uniform_color",
+        "description": "Walls are clean, uniform in color, have no rust, and are free of unpatched holes."
+      },
+      {
+        "id": "multi_production_area_excessive_sauce_buildup_visible",
+        "description": "No excessive sauce buildup is visible."
+      },
+      {
+        "id": "multi_production_area_job_aidslaminates_clean_free",
+        "description": "Job aids/laminates are clean and free of rips, folded edges, or excessive fading."
+      }
+    ]
+  },
+  {
+    "id": "mak_makeline_refrigeration",
+    "name": "Makeline & Refrigeration",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "make_makeline_refrigeration_top_lexans_gaskets_handles",
+        "description": "Top Lexans, gaskets, and handles are clean and functional."
+      },
+      {
+        "id": "make_makeline_refrigeration_bottom_gaskets_doors_intact",
+        "description": "Bottom gaskets and doors show no visible signs of failure, such as pooling water, leakage, debris accumulation, or detachment."
+      },
+      {
+        "id": "make_makeline_refrigeration_condenser_clean",
+        "description": "Condenser is clean."
+      },
+      {
+        "id": "make_makeline_refrigeration_more_than_makeline_grate",
+        "description": "No more than 25% of makeline grate bars are missing."
+      },
+      {
+        "id": "make_makeline_refrigeration_makeline_monitor_keyboard_clean",
+        "description": "Makeline monitor and keyboard are clean and free of excessive buildup."
+      }
+    ]
+  },
+  {
+    "id": "makeline_temperature",
+    "name": "Makeline Temperature",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "makeline_temperature_reading_top",
+        "description": "Temperature reading of at least one product from the makeline top."
+      },
+      {
+        "id": "makeline_temperature_reading_bottom",
+        "description": "Temperature reading of at least one product from the makeline bottom."
+      },
+      {
+        "id": "makeline_temperature_range_33_40",
+        "description": "All temperature readings are between 33°-40° F."
+      }
+    ]
+  },
+  {
+    "id": "multi_food_prep_available_set",
+    "name": "Food Prep",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "make_food_prep_inuse_products_correctly_dated",
+        "description": "All in-use products must have a clearly visible date/time label affixed to the container"
+      },
+      {
+        "id": "make_food_prep_prepped_expiry_dates_exceed",
+        "description": "Prepped expiry dates do not exceed the unopened expiry date."
+      },
+      {
+        "id": "make_food_prep_refrigerated_products_stored_properly",
+        "description": "Refrigerated products are stored properly and not left out."
+      },
+      {
+        "id": "make_food_prep_open_bags_walkin_under",
+        "description": "No open bags are in the walk-in or under the makeline; products are transferred to Lexans."
+      },
+      {
+        "id": "make_food_prep_frozen_product_properly_thawed",
+        "description": "All frozen product is properly thawed by time of use."
+      },
+      {
+        "id": "make_food_prep_makeline_setup_time_opening",
+        "description": "Makeline is set-up by time of opening and not broken down until closing."
+      },
+      {
+        "id": "make_food_prep_restaurant_out_more_than",
+        "description": "Restaurant is not out of more than one product on the menu."
+      }
+    ]
+  },
+  {
+    "id": "multi_approved_product_procedure",
+    "name": "Approved Product Procedure",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "prod_approved_product_team_members_touching_pepperoncini",
+        "description": "Team members are not touching pepperoncini or any cooked product with bare hands."
+      },
+      {
+        "id": "prod_approved_product_correct_number_docker_passes",
+        "description": "Correct number of docker passes are used."
+      },
+      {
+        "id": "prod_approved_product_thin_crusts_stored_room",
+        "description": "Thin and GF crusts are stored at room temperature."
+      },
+      {
+        "id": "prod_approved_product_pizzas_cut_packaged_according",
+        "description": "Pizzas are cut and packaged according to standard."
+      },
+      {
+        "id": "prod_approved_product_correct_postbake_application_procedures",
+        "description": "Correct post-bake application procedures are followed (no under/over-portioning)."
+      }
+    ]
+  },
+  {
+    "id": "multi_thermometers_more_are_available",
+    "name": "Thermometers",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "other_thermometers_2_visual_confirmation_two_more",
+        "description": "Visual confirmation of two or more thermometers."
+      },
+      {
+        "id": "other_thermometers_2_evidence_calibration_calibration_log",
+        "description": "Evidence of calibration (e.g., calibration log or observation of calibration test)."
+      }
+    ]
+  },
+  {
+    "id": "oven_belt",
+    "name": "Oven Belt",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "oven_oven_exhaust_oven_belt_properly_tensioned",
+        "description": "Oven belt is properly tensioned (~2 inches of slack), correctly fed, and free of excessive buildup."
+      }
+    ]
+  },
+  {
+    "id": "oven_fingers",
+    "name": "Oven Fingers",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "oven_oven_exhaust_oven_fingers_free_excessive",
+        "description": "Oven fingers are free of excessive buildup and placed correctly."
+      }
+    ]
+  },
+  {
+    "id": "oven_exterior",
+    "name": "Oven Exterior",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "oven_oven_exhaust_oven_exterior_windows_eyebrows",
+        "description": "Oven exterior (windows, eyebrows, fan filters, crumb trays) is clean with no excessive discoloration or buildup."
+      }
+    ]
+  },
+  {
+    "id": "hood_baffle",
+    "name": "Hood Baffle (Vents)",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "oven_oven_exhaust_hood_baffle_vents_correctly",
+        "description": "Hood baffle (vents) are correctly positioned and free of discoloration or excessive buildup."
+      },
+      {
+        "id": "oven_oven_exhaust_verification_hood_suction_holds",
+        "description": "Verification that hood suction holds a piece of parchment paper against the vent."
+      }
+    ]
+  },
+  {
+    "id": "hood_exterior_interior",
+    "name": "Hood Exterior & Interior",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "oven_oven_exhaust_exterior_interior_hood_free",
+        "description": "Exterior and interior of the hood are free of discoloration or excessive buildup."
+      },
+      {
+        "id": "oven_oven_exhaust_hood_lights_present_clean",
+        "description": "Hood lights are present, clean, and functioning."
+      }
+    ]
+  },
+  {
+    "id": "prod_screens_disks",
+    "name": "Screens & Disks",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "prod_screens_disks_screens_disks_free_dents",
+        "description": "Screens and disks are free of dents with minimal carbon build-up."
+      },
+      {
+        "id": "prod_screens_disks_less_than_screen_supply",
+        "description": "Less than 1/4 of the screen supply has more than 1/4 of heavy carbonization."
+      }
+    ]
+  },
+  {
+    "id": "prod_smallwares",
+    "name": "Smallwares",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "prod_smallwares_smallwares_clean_good_condition",
+        "description": "Smallwares are clean and in good condition (e.g., no worn-down dockers, no dull/bent cutters)."
+      },
+      {
+        "id": "prod_smallwares_sufficient_smallwares_available_service",
+        "description": "Sufficient smallwares are available to service customers."
+      }
+    ]
+  },
+  {
+    "id": "multi_sheeter_spinner",
+    "name": "Sheeter & Spinner",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "prod_sheeter_spinner_present_sheeter_clean_rollers",
+        "description": "If present, sheeter is clean, rollers are free of excessive buildup, and it is in good condition."
+      },
+      {
+        "id": "prod_sheeter_spinner_sheeter_dials_set_top",
+        "description": "Sheeter dials are set with the top at 4 and the bottom at 2."
+      },
+      {
+        "id": "prod_sheeter_spinner_present_spinner_clean_good",
+        "description": "If present, spinner is clean, in good repair, and set properly with counter-weight cable."
+      },
+      {
+        "id": "prod_sheeter_spinner_spinner_settings",
+        "description": "Spinner settings are at 9.2."
+      },
+      {
+        "id": "prod_sheeter_spinner_spinner_carpet_intact_free",
+        "description": "Spinner carpet is intact and free of buildup."
+      }
+    ]
+  },
+  {
+    "id": "cut_cut_table_heat_racks",
+    "name": "Cut Table & Heat Racks",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "cut_cut_table_cut_table_heat_racks",
+        "description": "Cut table and heat racks are clean, organized, in good structural condition, and operating properly."
+      },
+      {
+        "id": "cut_cut_table_top_heat_rack_shelving",
+        "description": "Top of heat rack and shelving under grates have no buildup."
+      },
+      {
+        "id": "cut_cut_table_grates_intact_fewer_than",
+        "description": "Grates are intact (fewer than two bars missing on a grate)."
+      },
+      {
+        "id": "cut_cut_table_least_one_entire_heat",
+        "description": "At least one entire heat rack unit is in full working condition."
+      },
+      {
+        "id": "cut_cut_table_lexans_used_storage_dated",
+        "description": "Lexans used for storage are dated, within shelf life, and clean."
+      },
+      {
+        "id": "cut_cut_table_monitors_fans_electronics_clean",
+        "description": "Monitors, fans, or electronics are clean and in good repair; fans are not pointed at food surfaces."
+      }
+    ]
+  },
+  {
+    "id": "multi_use_pizza_sauce_temperature",
+    "name": "Pizza Sauce Temperature",
+    "area": "Production & Make Line Area",
+    "required_evidence": [
+      {
+        "id": "sauce_inuse_pizza_sauce_expired",
+        "description": "Sauce is not expired."
+      },
+      {
+        "id": "sauce_inuse_pizza_video_clean_sanitized_calibrated",
+        "description": "Video of a clean, sanitized, calibrated thermometer inserted 1-1.5\" into the pizza sauce for one minute."
+      },
+      {
+        "id": "sauce_inuse_pizza_temperature_reading_between_6084",
+        "description": "Temperature reading is between 60-84° F."
+      }
+    ]
+  }
+]

@@ -21,6 +21,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  getLocalMediaErrorMessage,
+  persistLocalVideo,
+} from '@/services/localMedia';
+
 export default function CameraScreen() {
   const router = useRouter();
   const { assessmentId, areaId } = useLocalSearchParams<{
@@ -170,14 +175,8 @@ export default function CameraScreen() {
         return;
       }
 
-      router.dismissTo({
-        ...areaRoute,
-        params: {
-          ...areaRoute.params,
-          recordedUri: result.uri,
-        },
-      });
-    } catch {
+      const stableVideo = await persistLocalVideo(result.uri, 'camera');
+
       if (discardRecordingRef.current) {
         if (mountedRef.current) {
           leaveCamera();
@@ -185,7 +184,27 @@ export default function CameraScreen() {
         return;
       }
 
-      setRecordingError('Video recording failed. Please try again.');
+      router.dismissTo({
+        ...areaRoute,
+        params: {
+          ...areaRoute.params,
+          recordedFileName: stableVideo.fileName,
+        },
+      });
+    } catch (error) {
+      if (discardRecordingRef.current) {
+        if (mountedRef.current) {
+          leaveCamera();
+        }
+        return;
+      }
+
+      setRecordingError(
+        getLocalMediaErrorMessage(
+          error,
+          'Video recording failed. Please try again.',
+        ),
+      );
     } finally {
       if (mountedRef.current) {
         setIsRecording(false);

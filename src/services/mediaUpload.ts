@@ -1,4 +1,5 @@
 import * as Crypto from 'expo-crypto';
+import { File } from 'expo-file-system';
 import { FirebaseError } from 'firebase/app';
 import {
   ref,
@@ -51,6 +52,10 @@ type StartMediaUploadOptions = Readonly<{
   onProgress?: (progress: UploadProgress) => void;
 }>;
 
+type ClosableBlob = Blob & Readonly<{
+  close?: () => void;
+}>;
+
 function validateSafeId(value: string, label: 'assessmentId' | 'fileId') {
   if (!SAFE_ID_PATTERN.test(value)) {
     throw new MediaUploadError(
@@ -90,7 +95,10 @@ export function buildVideoObjectPath(
   return `${assessmentId}_${fileId}_video/${areaId}/video_${areaId}.mp4`;
 }
 
-async function readLocalVideo(media: MediaFile) {
+function getValidatedLocalVideoFile(
+  media: MediaFile,
+  objectPath: string,
+) {
   if (!media.uri) {
     throw new MediaUploadError(
       'media-upload/read-failed',
@@ -106,19 +114,96 @@ async function readLocalVideo(media: MediaFile) {
   }
 
   try {
-    const response = await fetch(media.uri);
-    const blob = await response.blob();
+    const file = new File(media.uri);
+    const fileExists = file.exists;
+    const fileSize = file.size;
+    const fileType = file.type;
 
-    if (blob.size === 0) {
-      throw new Error('The local video is empty.');
+    if (__DEV__) {
+      console.log('[media-upload] UPLOAD SOURCE', {
+        mediaUri: media.uri,
+        exists: fileExists,
+        size: fileSize,
+        type: fileType,
+        objectPath,
+      });
     }
 
-    return blob;
-  } catch {
+    if (!fileExists) {
+      throw new MediaUploadError(
+        'media-upload/read-failed',
+        'The selected video no longer exists or cannot be read from this device.',
+      );
+    }
+
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      throw new MediaUploadError(
+        'media-upload/read-failed',
+        'The selected video is empty or its size cannot be read.',
+      );
+    }
+
+    return file;
+  } catch (error) {
+    if (error instanceof MediaUploadError) {
+      throw error;
+    }
+
     throw new MediaUploadError(
       'media-upload/read-failed',
       'The selected video could not be read from this device.',
     );
+  }
+}
+
+function uriToBlob(uri: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.onload = () => {
+      const blob = xhr.response as Blob | null;
+
+      if (!blob || typeof blob.size !== 'number' || blob.size <= 0) {
+        reject(
+          new MediaUploadError(
+            'media-upload/read-failed',
+            'Video could not be converted to upload data.',
+          ),
+        );
+        return;
+      }
+
+      resolve(blob);
+    };
+
+    xhr.onerror = () => {
+      reject(
+        new MediaUploadError(
+          'media-upload/read-failed',
+          'Could not read the selected video.',
+        ),
+      );
+    };
+
+    xhr.responseType = 'blob';
+    xhr.open('GET', uri, true);
+    xhr.send(null);
+  });
+}
+
+function releaseBlob(blob: Blob) {
+  const closableBlob = blob as ClosableBlob;
+
+  if (typeof closableBlob.close !== 'function') {
+    return;
+  }
+
+  try {
+    closableBlob.close();
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[media-upload] Blob cleanup failed', error);
+    }
   }
 }
 
@@ -127,22 +212,48 @@ function observeUpload(
   onProgress?: (progress: UploadProgress) => void,
 ) {
   return new Promise<void>((resolve, reject) => {
-    uploadTask.on(
+    let firstSnapshotLogged = false;
+    let unsubscribe: (() => void) | undefined;
+
+    function detachListener() {
+      unsubscribe?.();
+      unsubscribe = undefined;
+    }
+
+    unsubscribe = uploadTask.on(
       'state_changed',
       (snapshot) => {
-        const percentage =
+        if (__DEV__ && !firstSnapshotLogged) {
+          firstSnapshotLogged = true;
+          console.log('[media-upload] FIRST FIREBASE SNAPSHOT', {
+            bytesTransferred: snapshot.bytesTransferred,
+            totalBytes: snapshot.totalBytes,
+          });
+        }
+
+        const rawProgress =
           snapshot.totalBytes > 0
             ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100
             : 0;
+        const calculatedProgress = Math.min(
+          100,
+          Math.max(0, rawProgress),
+        );
 
         onProgress?.({
           bytesTransferred: snapshot.bytesTransferred,
           totalBytes: snapshot.totalBytes,
-          percentage,
+          percentage: calculatedProgress,
         });
       },
-      reject,
-      resolve,
+      (error) => {
+        detachListener();
+        reject(error);
+      },
+      () => {
+        detachListener();
+        resolve();
+      },
     );
   });
 }
@@ -159,22 +270,59 @@ export function startMediaUpload({
   let cancelRequested = false;
 
   const completion = (async () => {
-    const blob = await readLocalVideo(media);
+    const file = getValidatedLocalVideoFile(media, objectPath);
+    let blob: Blob | null = null;
 
-    if (cancelRequested) {
-      throw new MediaUploadError(
-        'media-upload/canceled',
-        'The upload was canceled.',
+    try {
+      if (cancelRequested) {
+        throw new MediaUploadError(
+          'media-upload/canceled',
+          'The upload was canceled.',
+        );
+      }
+
+      blob = await uriToBlob(file.uri);
+
+      if (__DEV__) {
+        console.log('[media-upload] BLOB READY', {
+          fileSize: file.size,
+          blobSize: blob.size,
+          blobType: blob.type,
+        });
+      }
+
+      if (blob.size !== file.size) {
+        throw new MediaUploadError(
+          'media-upload/read-failed',
+          'The converted video size does not match the local file.',
+        );
+      }
+
+      if (cancelRequested) {
+        throw new MediaUploadError(
+          'media-upload/canceled',
+          'The upload was canceled.',
+        );
+      }
+
+      uploadTask = uploadBytesResumable(
+        ref(rawMediaStorage, objectPath),
+        blob,
+        { contentType: VIDEO_CONTENT_TYPE },
       );
+
+      if (__DEV__) {
+        console.log('[media-upload] Firebase upload task created', {
+          objectPath,
+        });
+      }
+
+      await observeUpload(uploadTask, onProgress);
+    } finally {
+      if (blob) {
+        releaseBlob(blob);
+      }
     }
-
-    uploadTask = uploadBytesResumable(
-      ref(rawMediaStorage, objectPath),
-      blob,
-      { contentType: VIDEO_CONTENT_TYPE },
-    );
-
-    await observeUpload(uploadTask, onProgress);
   })();
 
   return {

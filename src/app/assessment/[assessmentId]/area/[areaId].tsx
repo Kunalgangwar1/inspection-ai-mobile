@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Directory, File, Paths } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,14 +13,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAreaById } from '@/constants/areas';
+import { useAssessmentRealtime } from '@/hooks/useAssessmentRealtime';
 import {
   getMediaUploadErrorMessage,
   isMediaUploadCanceled,
   startMediaUpload,
   type MediaUploadOperation,
 } from '@/services/mediaUpload';
+import {
+  getLocalMediaErrorMessage,
+  persistLocalVideo,
+  type StableLocalVideo,
+} from '@/services/localMedia';
+import { mapEvidenceResultsForArea } from '@/services/taxonomy';
 import type { MediaFile } from '@/types/media';
-import { mediaFileFromRecordedUri } from '@/utils/media';
 
 type UploadStatus =
   | 'idle'
@@ -32,7 +39,6 @@ type UploadStatus =
 type UploadViewState = Readonly<{
   mediaUri: string | null;
   status: UploadStatus;
-  progress: number;
   objectPath: string | null;
   error: string | null;
 }>;
@@ -40,17 +46,19 @@ type UploadViewState = Readonly<{
 const EMPTY_UPLOAD_STATE: UploadViewState = {
   mediaUri: null,
   status: 'idle',
-  progress: 0,
   objectPath: null,
   error: null,
 };
 
-function normalizeVideo(asset: ImagePicker.ImagePickerAsset): MediaFile {
+function normalizeVideo(
+  asset: ImagePicker.ImagePickerAsset,
+  stableVideo: StableLocalVideo,
+): MediaFile {
   return {
-    uri: asset.uri,
-    fileName: asset.fileName ?? null,
-    mimeType: asset.mimeType ?? null,
-    ...(typeof asset.fileSize === 'number' ? { fileSize: asset.fileSize } : {}),
+    uri: stableVideo.uri,
+    fileName: stableVideo.fileName,
+    mimeType: asset.mimeType ?? stableVideo.mimeType,
+    fileSize: stableVideo.fileSize,
     ...(typeof asset.duration === 'number'
       ? { duration: asset.duration / 1000 }
       : {}),
@@ -75,10 +83,10 @@ function formatFileSize(bytes: number) {
 
 export default function AreaScreen() {
   const router = useRouter();
-  const { assessmentId, areaId, recordedUri } = useLocalSearchParams<{
+  const { assessmentId, areaId, recordedFileName } = useLocalSearchParams<{
     assessmentId: string;
     areaId: string;
-    recordedUri?: string;
+    recordedFileName?: string;
   }>();
   const area = getAreaById(areaId);
   const [localVideo, setLocalVideo] = useState<MediaFile | null>(null);
@@ -86,11 +94,42 @@ export default function AreaScreen() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [uploadState, setUploadState] =
     useState<UploadViewState>(EMPTY_UPLOAD_STATE);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const uploadOperationRef = useRef<MediaUploadOperation | null>(null);
+  const uploadProgressRef = useRef(0);
   const mountedRef = useRef(true);
-  const selectedVideo = recordedUri
-    ? mediaFileFromRecordedUri(recordedUri)
-    : localVideo;
+  const recordedVideo = useMemo<MediaFile | null>(() => {
+    if (!recordedFileName) {
+      return null;
+    }
+
+    const mediaDirectory = new Directory(
+      Paths.document,
+      'inspection-media',
+    );
+    const recordedFile = new File(mediaDirectory, recordedFileName);
+    const fileExists = recordedFile.exists;
+    const fileSize = recordedFile.size;
+    const fileType = recordedFile.type;
+
+    if (__DEV__) {
+      console.log('[area] RECONSTRUCTED RECORDING', {
+        fileName: recordedFileName,
+        uri: recordedFile.uri,
+        exists: fileExists,
+        size: fileSize,
+        type: fileType,
+      });
+    }
+
+    return {
+      uri: recordedFile.uri,
+      fileName: recordedFileName,
+      mimeType: fileType || 'video/mp4',
+      ...(fileExists && fileSize > 0 ? { fileSize } : {}),
+    };
+  }, [recordedFileName]);
+  const selectedVideo = recordedVideo ?? localVideo;
   const currentUploadState =
     uploadState.mediaUri === (selectedVideo?.uri ?? null)
       ? uploadState
@@ -98,8 +137,35 @@ export default function AreaScreen() {
   const isUploading =
     uploadState.status === 'uploading' ||
     uploadState.status === 'canceling';
+  const displayedProgress = Math.min(
+    100,
+    Math.max(0, uploadProgress),
+  );
   const progressWidth =
-    `${Math.round(currentUploadState.progress)}%` as `${number}%`;
+    `${Math.round(displayedProgress)}%` as `${number}%`;
+  const resultListenerKey =
+    currentUploadState.status === 'complete'
+      ? currentUploadState.objectPath
+      : null;
+  const assessmentRealtime = useAssessmentRealtime(
+    assessmentId,
+    resultListenerKey,
+  );
+  const analysisComplete =
+    typeof assessmentRealtime.result?.evaluation_id === 'string' &&
+    assessmentRealtime.result.evaluation_id.length > 0 &&
+    assessmentRealtime.result.results !== undefined;
+  const analysisResults = assessmentRealtime.result?.results;
+  const mappedAreaResults = useMemo(
+    () =>
+      analysisComplete && analysisResults && area
+        ? mapEvidenceResultsForArea(analysisResults, area.displayName)
+        : null,
+    [analysisComplete, analysisResults, area],
+  );
+  const hasAnyResults = analysisResults
+    ? Object.keys(analysisResults).length > 0
+    : false;
 
   useEffect(() => {
     const operationRef = uploadOperationRef;
@@ -160,10 +226,17 @@ export default function AreaScreen() {
         return;
       }
 
-      setLocalVideo(normalizeVideo(asset));
-      router.setParams({ recordedUri: undefined });
-    } catch {
-      setPickerError('Unable to open the video picker. Please try again.');
+      const stableVideo = await persistLocalVideo(asset.uri, 'picker');
+
+      setLocalVideo(normalizeVideo(asset, stableVideo));
+      router.setParams({ recordedFileName: undefined });
+    } catch (error) {
+      setPickerError(
+        getLocalMediaErrorMessage(
+          error,
+          'Unable to open the video picker. Please try again.',
+        ),
+      );
     } finally {
       setIsPicking(false);
     }
@@ -173,7 +246,7 @@ export default function AreaScreen() {
     setLocalVideo(null);
     setPickerError(null);
     resetUploadState();
-    router.setParams({ recordedUri: undefined });
+    router.setParams({ recordedFileName: undefined });
   }
 
   function recordVideo() {
@@ -210,49 +283,88 @@ export default function AreaScreen() {
     }
 
     const mediaUri = selectedVideo.uri;
+    let operation: MediaUploadOperation | null = null;
+    let previousBytesTransferred: number | null = null;
 
     try {
-      const operation = startMediaUpload({
+      operation = startMediaUpload({
         assessmentId,
         areaId: area.id,
         media: selectedVideo,
-        onProgress: ({ percentage }) => {
-          if (!mountedRef.current) {
+        onProgress: ({ bytesTransferred, totalBytes, percentage }) => {
+          if (
+            !mountedRef.current ||
+            !operation ||
+            uploadOperationRef.current !== operation
+          ) {
             return;
           }
 
-          setUploadState((current) =>
-            current.mediaUri === mediaUri
-              ? { ...current, progress: percentage }
-              : current,
+          const activeOperation = operation;
+          const bytesTransferredDecreased =
+            previousBytesTransferred !== null &&
+            bytesTransferred < previousBytesTransferred;
+          previousBytesTransferred = bytesTransferred;
+          const previousDisplayedProgress = uploadProgressRef.current;
+          uploadProgressRef.current = Math.max(
+            previousDisplayedProgress,
+            percentage,
           );
+
+          if (__DEV__) {
+            console.log('[media-upload] progress', {
+              operationId: activeOperation.fileId,
+              objectPath: activeOperation.objectPath,
+              bytesTransferred,
+              totalBytes,
+              calculatedProgress: percentage,
+              previousDisplayedProgress,
+              bytesTransferredDecreased,
+            });
+          }
+
+          setUploadProgress((previous) => {
+            if (uploadOperationRef.current !== activeOperation) {
+              return previous;
+            }
+
+            return Math.max(previous, percentage);
+          });
         },
       });
 
       uploadOperationRef.current = operation;
+      uploadProgressRef.current = 0;
+      setUploadProgress(0);
       setUploadState({
         mediaUri,
         status: 'uploading',
-        progress: 0,
         objectPath: operation.objectPath,
         error: null,
       });
 
       await operation.completion;
 
-      if (!mountedRef.current) {
+      if (
+        !mountedRef.current ||
+        uploadOperationRef.current !== operation
+      ) {
         return;
       }
 
+      uploadProgressRef.current = 100;
+      setUploadProgress(100);
       setUploadState({
         mediaUri,
         status: 'complete',
-        progress: 100,
         objectPath: operation.objectPath,
         error: null,
       });
     } catch (error: unknown) {
-      if (!mountedRef.current) {
+      if (
+        !mountedRef.current ||
+        (operation && uploadOperationRef.current !== operation)
+      ) {
         return;
       }
 
@@ -263,7 +375,9 @@ export default function AreaScreen() {
         error: getMediaUploadErrorMessage(error),
       }));
     } finally {
-      uploadOperationRef.current = null;
+      if (uploadOperationRef.current === operation) {
+        uploadOperationRef.current = null;
+      }
     }
   }
 
@@ -340,11 +454,9 @@ export default function AreaScreen() {
                     </>
                   ) : null}
 
-                  <Text style={styles.readyText}>
-                    {currentUploadState.status === 'complete'
-                      ? 'Upload complete - processing'
-                      : 'Ready for upload'}
-                  </Text>
+                  {currentUploadState.status !== 'complete' ? (
+                    <Text style={styles.readyText}>Ready for upload</Text>
+                  ) : null}
                 </View>
               ) : (
                 <Text style={styles.mediaHelp}>
@@ -462,7 +574,7 @@ export default function AreaScreen() {
                     accessibilityValue={{
                       min: 0,
                       max: 100,
-                      now: Math.round(currentUploadState.progress),
+                      now: Math.round(displayedProgress),
                     }}
                     style={styles.progressTrack}>
                     <View
@@ -473,7 +585,7 @@ export default function AreaScreen() {
                     />
                   </View>
                   <Text style={styles.progressText}>
-                    {Math.round(currentUploadState.progress)}%
+                    {Math.round(displayedProgress)}%
                   </Text>
                 </View>
               ) : null}
@@ -482,6 +594,97 @@ export default function AreaScreen() {
                 <Text accessibilityRole="alert" style={styles.errorText}>
                   {currentUploadState.error}
                 </Text>
+              ) : null}
+
+              {currentUploadState.status === 'complete' ? (
+                <View style={styles.analysisSection}>
+                  <Text style={styles.analysisHeading}>
+                    {analysisComplete
+                      ? 'Analysis complete'
+                      : 'Processing...'}
+                  </Text>
+
+                  {assessmentRealtime.error ? (
+                    <Text accessibilityRole="alert" style={styles.errorText}>
+                      {assessmentRealtime.error}
+                    </Text>
+                  ) : null}
+
+                  {analysisComplete && !hasAnyResults ? (
+                    <Text style={styles.analysisMessage}>
+                      No clear evidence was identified in this video.
+                    </Text>
+                  ) : null}
+
+                  {analysisComplete &&
+                  hasAnyResults &&
+                  mappedAreaResults?.groups.length === 0 &&
+                  mappedAreaResults.unknownEvidence.length === 0 ? (
+                    <Text style={styles.analysisMessage}>
+                      No clear evidence was identified for this area.
+                    </Text>
+                  ) : null}
+
+                  {mappedAreaResults?.groups.map((group) => (
+                    <View key={group.itemId} style={styles.itemGroup}>
+                      <Text style={styles.itemName}>{group.itemName}</Text>
+
+                      <View style={styles.observationList}>
+                        {group.evidence.map((evidence) => (
+                          <View
+                            key={evidence.evidenceId}
+                            style={styles.observationCard}>
+                            <Text
+                              style={[
+                                styles.evidenceResult,
+                                evidence.state === 'COMPLIANT'
+                                  ? styles.compliantResult
+                                  : styles.nonCompliantResult,
+                              ]}>
+                              {evidence.state}
+                            </Text>
+                            <Text style={styles.observationDescription}>
+                              {evidence.description}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+
+                  {mappedAreaResults &&
+                  mappedAreaResults.unknownEvidence.length > 0 ? (
+                    <View style={styles.itemGroup}>
+                      <Text style={styles.itemName}>Unmapped evidence</Text>
+
+                      <View style={styles.observationList}>
+                        {mappedAreaResults.unknownEvidence.map((evidence) => (
+                          <View
+                            key={evidence.evidenceId}
+                            style={styles.observationCard}>
+                            <Text
+                              style={[
+                                styles.evidenceResult,
+                                evidence.state === 'COMPLIANT'
+                                  ? styles.compliantResult
+                                  : styles.nonCompliantResult,
+                              ]}>
+                              {evidence.state}
+                            </Text>
+                            <Text style={styles.observationDescription}>
+                              Unknown evidence
+                            </Text>
+                            {__DEV__ ? (
+                              <Text selectable style={styles.debugEvidenceId}>
+                                {evidence.evidenceId}
+                              </Text>
+                            ) : null}
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
               ) : null}
 
               {currentUploadState.objectPath ? (
@@ -720,6 +923,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'right',
+  },
+  analysisSection: {
+    marginTop: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  analysisHeading: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  analysisMessage: {
+    marginTop: 10,
+    color: '#4B5563',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  itemGroup: {
+    marginTop: 18,
+  },
+  itemName: {
+    color: '#1F2937',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  observationList: {
+    marginTop: 10,
+    gap: 10,
+  },
+  observationCard: {
+    gap: 9,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  observationDescription: {
+    color: '#374151',
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  debugEvidenceId: {
+    color: '#6B7280',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  evidenceResult: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    overflow: 'hidden',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  compliantResult: {
+    color: '#047857',
+    backgroundColor: '#D1FAE5',
+  },
+  nonCompliantResult: {
+    color: '#B91C1C',
+    backgroundColor: '#FEE2E2',
   },
   debugSection: {
     marginTop: 18,
