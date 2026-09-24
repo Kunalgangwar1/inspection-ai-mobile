@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "inspection-ai-mobile",
+    "slug": "inspection-ai-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "inspectionaimobile",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
