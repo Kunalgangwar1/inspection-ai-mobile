@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, type DocumentData } from 'firebase/firestore';
 
 import { db } from '@/services/firebase';
+import type { EvidenceState } from '@/services/taxonomy';
 
-export type EvidenceResult = 'COMPLIANT' | 'NON_COMPLIANT';
+export type EvidenceResult = EvidenceState;
+export type UserOverrides = Record<string, EvidenceState>;
 
 export type AssessmentRealtimeResult = Readonly<{
   evaluation_id?: string;
   results?: Record<string, EvidenceResult>;
+  userOverrides: UserOverrides;
 }>;
 
 type ListenerState = Readonly<{
@@ -30,13 +33,14 @@ function parseAssessmentResult(
   data: DocumentData | undefined,
 ): AssessmentRealtimeResult {
   if (!data) {
-    return {};
+    return { userOverrides: {} };
   }
 
   const result: {
     evaluation_id?: string;
     results?: Record<string, EvidenceResult>;
-  } = {};
+    userOverrides: UserOverrides;
+  } = { userOverrides: {} };
 
   if (typeof data.evaluation_id === 'string') {
     result.evaluation_id = data.evaluation_id;
@@ -49,6 +53,17 @@ function parseAssessmentResult(
     Object.values(data.results).every(isEvidenceResult)
   ) {
     result.results = { ...data.results } as Record<string, EvidenceResult>;
+  }
+
+  if (
+    typeof data.userOverrides === 'object' &&
+    data.userOverrides !== null &&
+    !Array.isArray(data.userOverrides) &&
+    Object.values(data.userOverrides).every(isEvidenceResult)
+  ) {
+    result.userOverrides = {
+      ...data.userOverrides,
+    } as UserOverrides;
   }
 
   return result;
@@ -69,7 +84,12 @@ export function useAssessmentRealtime(
 
     return onSnapshot(
       assessmentRef,
+      { includeMetadataChanges: true },
       (snapshot) => {
+        if (snapshot.metadata.hasPendingWrites) {
+          return;
+        }
+
         setState({
           listenerKey,
           result: parseAssessmentResult(

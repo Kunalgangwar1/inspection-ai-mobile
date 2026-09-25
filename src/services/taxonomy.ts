@@ -24,7 +24,9 @@ export type EvidenceTaxonomyLookup = Readonly<{
 
 export type EvidenceResultViewModel = Readonly<{
   evidenceId: string;
-  state: EvidenceState;
+  aiState: EvidenceState;
+  overrideState: EvidenceState | null;
+  effectiveState: EvidenceState;
   description: string;
   itemId: string | null;
   itemName: string;
@@ -80,9 +82,17 @@ export function getEvidenceTaxonomy(evidenceId: string) {
   return evidenceById.get(evidenceId);
 }
 
+export function getEffectiveEvidenceState(
+  aiState: EvidenceState,
+  overrideState: EvidenceState | null | undefined,
+): EvidenceState {
+  return overrideState ?? aiState;
+}
+
 export function mapEvidenceResultsForArea(
   results: Record<string, EvidenceState>,
   area: string,
+  userOverrides: Readonly<Record<string, EvidenceState>> = {},
 ): AreaEvidenceResults {
   const groupsByItemId = new Map<
     string,
@@ -98,13 +108,20 @@ export function mapEvidenceResultsForArea(
   >();
   const unknownEvidence: EvidenceResultViewModel[] = [];
 
-  Object.entries(results).forEach(([evidenceId, state]) => {
+  Object.entries(results).forEach(([evidenceId, aiState]) => {
     const lookup = evidenceById.get(evidenceId);
+    const overrideState = userOverrides[evidenceId] ?? null;
+    const effectiveState = getEffectiveEvidenceState(
+      aiState,
+      overrideState,
+    );
 
     if (!lookup) {
       unknownEvidence.push({
         evidenceId,
-        state,
+        aiState,
+        overrideState,
+        effectiveState,
         description: 'Unknown evidence',
         itemId: null,
         itemName: 'Unmapped evidence',
@@ -125,7 +142,9 @@ export function mapEvidenceResultsForArea(
 
     const viewModel = {
       evidenceId,
-      state,
+      aiState,
+      overrideState,
+      effectiveState,
       description: lookup.description,
       itemId: lookup.itemId,
       itemName: lookup.itemName,

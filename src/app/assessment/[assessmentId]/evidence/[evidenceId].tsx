@@ -12,11 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAssessmentRealtime } from '@/hooks/useAssessmentRealtime';
+import {
+  clearEvidenceOverride,
+  getAssessmentOverrideErrorMessage,
+  setEvidenceOverride,
+} from '@/services/assessmentOverrides';
 import {
   getEvidenceSegments,
   type EvidenceSegment,
 } from '@/services/evidenceSegments';
-import type { EvidenceState } from '@/services/taxonomy';
+import {
+  getEffectiveEvidenceState,
+  type EvidenceState,
+} from '@/services/taxonomy';
 
 type ClipLoadStatus = 'loading' | 'ready' | 'empty' | 'error';
 
@@ -51,6 +60,24 @@ function EvidenceClipPlayer({
   );
 }
 
+type EvidenceStateBadgeProps = Readonly<{
+  state: EvidenceState;
+}>;
+
+function EvidenceStateBadge({ state }: EvidenceStateBadgeProps) {
+  return (
+    <Text
+      style={[
+        styles.evidenceResult,
+        state === 'COMPLIANT'
+          ? styles.compliantResult
+          : styles.nonCompliantResult,
+      ]}>
+      {state}
+    </Text>
+  );
+}
+
 export default function EvidenceReviewScreen() {
   const router = useRouter();
   const {
@@ -58,21 +85,51 @@ export default function EvidenceReviewScreen() {
     evidenceId,
     itemName,
     description,
-    state,
+    aiState: routedAiStateParam,
+    state: legacyAiStateParam,
   } = useLocalSearchParams<{
     assessmentId: string;
     evidenceId: string;
     itemName?: string;
     description?: string;
+    aiState?: string;
     state?: string;
   }>();
   const [loadStatus, setLoadStatus] = useState<ClipLoadStatus>('loading');
   const [segments, setSegments] = useState<readonly EvidenceSegment[]>([]);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [isSavingOverride, setIsSavingOverride] = useState(false);
+  const [overrideError, setOverrideError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
-  const evidenceState: EvidenceState | null =
-    state === 'COMPLIANT' || state === 'NON_COMPLIANT' ? state : null;
+  const assessmentRealtime = useAssessmentRealtime(
+    assessmentId,
+    'evidence:' + evidenceId,
+  );
+  const routedAiState: EvidenceState | null =
+    routedAiStateParam === 'COMPLIANT' ||
+    routedAiStateParam === 'NON_COMPLIANT'
+      ? routedAiStateParam
+      : legacyAiStateParam === 'COMPLIANT' ||
+          legacyAiStateParam === 'NON_COMPLIANT'
+        ? legacyAiStateParam
+        : null;
+  const confirmedAiState =
+    assessmentRealtime.result?.results?.[evidenceId];
+  const aiState = confirmedAiState ?? routedAiState;
+  const overrideState =
+    confirmedAiState !== undefined
+      ? assessmentRealtime.result?.userOverrides[evidenceId]
+      : undefined;
+  const effectiveState = aiState
+    ? getEffectiveEvidenceState(aiState, overrideState)
+    : null;
+  const oppositeState: EvidenceState | null =
+    confirmedAiState === 'COMPLIANT'
+      ? 'NON_COMPLIANT'
+      : confirmedAiState === 'NON_COMPLIANT'
+        ? 'COMPLIANT'
+        : null;
 
   const loadSegments = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
@@ -118,6 +175,40 @@ export default function EvidenceReviewScreen() {
     setSelectedClipIndex(index);
   }
 
+  async function saveOppositeOverride() {
+    if (!oppositeState || isSavingOverride) {
+      return;
+    }
+
+    setIsSavingOverride(true);
+    setOverrideError(null);
+
+    try {
+      await setEvidenceOverride(assessmentId, evidenceId, oppositeState);
+    } catch (error: unknown) {
+      setOverrideError(getAssessmentOverrideErrorMessage(error));
+    } finally {
+      setIsSavingOverride(false);
+    }
+  }
+
+  async function restoreAiResult() {
+    if (overrideState === undefined || isSavingOverride) {
+      return;
+    }
+
+    setIsSavingOverride(true);
+    setOverrideError(null);
+
+    try {
+      await clearEvidenceOverride(assessmentId, evidenceId);
+    } catch (error: unknown) {
+      setOverrideError(getAssessmentOverrideErrorMessage(error));
+    } finally {
+      setIsSavingOverride(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -133,21 +224,88 @@ export default function EvidenceReviewScreen() {
           <Text style={styles.eyebrow}>Evidence review</Text>
           <Text style={styles.itemName}>{itemName ?? 'Inspection item'}</Text>
 
-          {evidenceState ? (
-            <Text
-              style={[
-                styles.evidenceResult,
-                evidenceState === 'COMPLIANT'
-                  ? styles.compliantResult
-                  : styles.nonCompliantResult,
-              ]}>
-              {evidenceState}
-            </Text>
-          ) : null}
-
           <Text style={styles.description}>
             {description ?? 'Evidence details are unavailable.'}
           </Text>
+
+          <View style={styles.decisionSection}>
+            <Text style={styles.decisionTitle}>Inspector decision</Text>
+
+            {aiState ? (
+              <>
+                <Text style={styles.decisionLabel}>AI result</Text>
+                <EvidenceStateBadge state={aiState} />
+              </>
+            ) : (
+              <Text style={styles.decisionMessage}>
+                AI result is unavailable.
+              </Text>
+            )}
+
+            {confirmedAiState !== undefined && effectiveState ? (
+              <>
+                {overrideState !== undefined ? (
+                  <>
+                    <Text style={styles.decisionLabel}>
+                      Inspector override
+                    </Text>
+                    <EvidenceStateBadge state={overrideState} />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.decisionLabel}>
+                      Inspector decision
+                    </Text>
+                    <Text style={styles.decisionMessage}>
+                      Using AI result
+                    </Text>
+                  </>
+                )}
+
+                <Text style={styles.decisionLabel}>Effective result</Text>
+                <EvidenceStateBadge state={effectiveState} />
+
+                {overrideError ? (
+                  <Text accessibilityRole="alert" style={styles.overrideError}>
+                    {overrideError}
+                  </Text>
+                ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSavingOverride}
+                  onPress={() =>
+                    void (overrideState !== undefined
+                      ? restoreAiResult()
+                      : saveOppositeOverride())
+                  }
+                  style={({ pressed }) => [
+                    styles.decisionButton,
+                    pressed && styles.buttonPressed,
+                    isSavingOverride && styles.buttonDisabled,
+                  ]}>
+                  {isSavingOverride ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : null}
+                  <Text style={styles.decisionButtonText}>
+                    {isSavingOverride
+                      ? 'Saving...'
+                      : overrideState !== undefined
+                        ? 'Restore AI result'
+                        : 'Override to ' + oppositeState}
+                  </Text>
+                </Pressable>
+              </>
+            ) : assessmentRealtime.error ? (
+              <Text accessibilityRole="alert" style={styles.overrideError}>
+                {assessmentRealtime.error}
+              </Text>
+            ) : (
+              <Text style={styles.decisionMessage}>
+                Loading inspector decision...
+              </Text>
+            )}
+          </View>
 
           <View style={styles.clipSection}>
             {loadStatus === 'loading' ? (
@@ -283,6 +441,55 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     lineHeight: 31,
+  },
+  decisionSection: {
+    marginTop: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  decisionTitle: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  decisionLabel: {
+    marginTop: 16,
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  decisionMessage: {
+    marginTop: 7,
+    color: '#374151',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  overrideError: {
+    marginTop: 14,
+    color: '#B91C1C',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  decisionButton: {
+    minHeight: 48,
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    backgroundColor: '#2563EB',
+  },
+  decisionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   evidenceResult: {
     alignSelf: 'flex-start',

@@ -159,12 +159,17 @@ export default function AreaScreen() {
     assessmentRealtime.result.evaluation_id.length > 0 &&
     assessmentRealtime.result.results !== undefined;
   const analysisResults = assessmentRealtime.result?.results;
+  const userOverrides = assessmentRealtime.result?.userOverrides;
   const mappedAreaResults = useMemo(
     () =>
       analysisComplete && analysisResults && area
-        ? mapEvidenceResultsForArea(analysisResults, area.displayName)
+        ? mapEvidenceResultsForArea(
+            analysisResults,
+            area.displayName,
+            userOverrides ?? {},
+          )
         : null,
-    [analysisComplete, analysisResults, area],
+    [analysisComplete, analysisResults, area, userOverrides],
   );
   const hasAnyResults = analysisResults
     ? Object.keys(analysisResults).length > 0
@@ -404,7 +409,7 @@ export default function AreaScreen() {
         evidenceId: evidence.evidenceId,
         itemName: evidence.itemName,
         description: evidence.description,
-        state: evidence.state,
+        aiState: evidence.aiState,
       },
     });
   }
@@ -658,12 +663,17 @@ export default function AreaScreen() {
                             <Text
                               style={[
                                 styles.evidenceResult,
-                                evidence.state === 'COMPLIANT'
+                                evidence.effectiveState === 'COMPLIANT'
                                   ? styles.compliantResult
                                   : styles.nonCompliantResult,
                               ]}>
-                              {evidence.state}
+                              {evidence.effectiveState}
                             </Text>
+                            {evidence.overrideState !== null ? (
+                              <Text style={styles.overrideLabel}>
+                                Inspector override
+                              </Text>
+                            ) : null}
                             <Text style={styles.observationDescription}>
                               {evidence.description}
                             </Text>
@@ -694,12 +704,17 @@ export default function AreaScreen() {
                             <Text
                               style={[
                                 styles.evidenceResult,
-                                evidence.state === 'COMPLIANT'
+                                evidence.effectiveState === 'COMPLIANT'
                                   ? styles.compliantResult
                                   : styles.nonCompliantResult,
                               ]}>
-                              {evidence.state}
+                              {evidence.effectiveState}
                             </Text>
+                            {evidence.overrideState !== null ? (
+                              <Text style={styles.overrideLabel}>
+                                Inspector override
+                              </Text>
+                            ) : null}
                             <Text style={styles.observationDescription}>
                               Unknown evidence
                             </Text>
@@ -1006,6 +1021,12 @@ const styles = StyleSheet.create({
   viewEvidenceText: {
     color: '#2563EB',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  overrideLabel: {
+    alignSelf: 'flex-start',
+    color: '#92400E',
+    fontSize: 12,
     fontWeight: '700',
   },
   debugEvidenceId: {
