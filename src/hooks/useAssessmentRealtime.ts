@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, type DocumentData } from 'firebase/firestore';
+import {
+  doc,
+  onSnapshot,
+  Timestamp,
+  type DocumentData,
+} from 'firebase/firestore';
 
+import { AREAS, type AreaId } from '@/constants/areas';
 import { db } from '@/services/firebase';
 import type { EvidenceState } from '@/services/taxonomy';
 
 export type EvidenceResult = EvidenceState;
 export type UserOverrides = Record<string, EvidenceState>;
+export type CompletedAreas = Partial<Record<AreaId, Timestamp>>;
 
 export type AssessmentRealtimeResult = Readonly<{
   evaluation_id?: string;
   results?: Record<string, EvidenceResult>;
   userOverrides: UserOverrides;
+  completedAreas: CompletedAreas;
 }>;
 
 type ListenerState = Readonly<{
@@ -33,14 +41,15 @@ function parseAssessmentResult(
   data: DocumentData | undefined,
 ): AssessmentRealtimeResult {
   if (!data) {
-    return { userOverrides: {} };
+    return { userOverrides: {}, completedAreas: {} };
   }
 
   const result: {
     evaluation_id?: string;
     results?: Record<string, EvidenceResult>;
     userOverrides: UserOverrides;
-  } = { userOverrides: {} };
+    completedAreas: CompletedAreas;
+  } = { userOverrides: {}, completedAreas: {} };
 
   if (typeof data.evaluation_id === 'string') {
     result.evaluation_id = data.evaluation_id;
@@ -64,6 +73,20 @@ function parseAssessmentResult(
     result.userOverrides = {
       ...data.userOverrides,
     } as UserOverrides;
+  }
+
+  if (
+    typeof data.completedAreas === 'object' &&
+    data.completedAreas !== null &&
+    !Array.isArray(data.completedAreas)
+  ) {
+    AREAS.forEach((area) => {
+      const completedAt = data.completedAreas[area.id];
+
+      if (completedAt instanceof Timestamp) {
+        result.completedAreas[area.id] = completedAt;
+      }
+    });
   }
 
   return result;
