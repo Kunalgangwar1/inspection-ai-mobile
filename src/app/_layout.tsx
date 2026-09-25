@@ -25,6 +25,7 @@ function RootNavigator() {
       <Stack.Protected guard={Boolean(user)}>
         <Stack.Screen name="index" />
         <Stack.Screen name="assessment/[assessmentId]/index" />
+        <Stack.Screen name="assessment/[assessmentId]/evidence/[evidenceId]" />
         <Stack.Screen name="assessment/[assessmentId]/area/camera" />
         <Stack.Screen name="assessment/[assessmentId]/area/[areaId]" />
       </Stack.Protected>

@@ -22,7 +22,8 @@
           "recordAudioAndroid": true,
           "barcodeScannerEnabled": false
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

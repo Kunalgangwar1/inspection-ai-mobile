@@ -25,7 +25,10 @@ import {
   persistLocalVideo,
   type StableLocalVideo,
 } from '@/services/localMedia';
-import { mapEvidenceResultsForArea } from '@/services/taxonomy';
+import {
+  mapEvidenceResultsForArea,
+  type EvidenceResultViewModel,
+} from '@/services/taxonomy';
 import type { MediaFile } from '@/types/media';
 
 type UploadStatus =
@@ -393,6 +396,19 @@ export default function AreaScreen() {
     }));
   }
 
+  function openEvidenceReview(evidence: EvidenceResultViewModel) {
+    router.push({
+      pathname: '/assessment/[assessmentId]/evidence/[evidenceId]',
+      params: {
+        assessmentId,
+        evidenceId: evidence.evidenceId,
+        itemName: evidence.itemName,
+        description: evidence.description,
+        state: evidence.state,
+      },
+    });
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -631,9 +647,14 @@ export default function AreaScreen() {
 
                       <View style={styles.observationList}>
                         {group.evidence.map((evidence) => (
-                          <View
+                          <Pressable
+                            accessibilityRole="button"
                             key={evidence.evidenceId}
-                            style={styles.observationCard}>
+                            onPress={() => openEvidenceReview(evidence)}
+                            style={({ pressed }) => [
+                              styles.observationCard,
+                              pressed && styles.observationCardPressed,
+                            ]}>
                             <Text
                               style={[
                                 styles.evidenceResult,
@@ -646,7 +667,10 @@ export default function AreaScreen() {
                             <Text style={styles.observationDescription}>
                               {evidence.description}
                             </Text>
-                          </View>
+                            <Text style={styles.viewEvidenceText}>
+                              View evidence
+                            </Text>
+                          </Pressable>
                         ))}
                       </View>
                     </View>
@@ -659,9 +683,14 @@ export default function AreaScreen() {
 
                       <View style={styles.observationList}>
                         {mappedAreaResults.unknownEvidence.map((evidence) => (
-                          <View
+                          <Pressable
+                            accessibilityRole="button"
                             key={evidence.evidenceId}
-                            style={styles.observationCard}>
+                            onPress={() => openEvidenceReview(evidence)}
+                            style={({ pressed }) => [
+                              styles.observationCard,
+                              pressed && styles.observationCardPressed,
+                            ]}>
                             <Text
                               style={[
                                 styles.evidenceResult,
@@ -679,7 +708,10 @@ export default function AreaScreen() {
                                 {evidence.evidenceId}
                               </Text>
                             ) : null}
-                          </View>
+                            <Text style={styles.viewEvidenceText}>
+                              View evidence
+                            </Text>
+                          </Pressable>
                         ))}
                       </View>
                     </View>
@@ -963,10 +995,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
   },
+  observationCardPressed: {
+    opacity: 0.75,
+  },
   observationDescription: {
     color: '#374151',
     fontSize: 15,
     lineHeight: 21,
+  },
+  viewEvidenceText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '700',
   },
   debugEvidenceId: {
     color: '#6B7280',
