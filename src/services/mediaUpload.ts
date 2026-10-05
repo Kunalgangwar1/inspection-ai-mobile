@@ -95,10 +95,7 @@ export function buildVideoObjectPath(
   return `${assessmentId}_${fileId}_video/${areaId}/video_${areaId}.mp4`;
 }
 
-function getValidatedLocalVideoFile(
-  media: MediaFile,
-  objectPath: string,
-) {
+function getValidatedLocalVideoFile(media: MediaFile) {
   if (!media.uri) {
     throw new MediaUploadError(
       'media-upload/read-failed',
@@ -117,17 +114,6 @@ function getValidatedLocalVideoFile(
     const file = new File(media.uri);
     const fileExists = file.exists;
     const fileSize = file.size;
-    const fileType = file.type;
-
-    if (__DEV__) {
-      console.log('[media-upload] UPLOAD SOURCE', {
-        mediaUri: media.uri,
-        exists: fileExists,
-        size: fileSize,
-        type: fileType,
-        objectPath,
-      });
-    }
 
     if (!fileExists) {
       throw new MediaUploadError(
@@ -200,11 +186,7 @@ function releaseBlob(blob: Blob) {
 
   try {
     closableBlob.close();
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('[media-upload] Blob cleanup failed', error);
-    }
-  }
+  } catch {}
 }
 
 function observeUpload(
@@ -212,7 +194,6 @@ function observeUpload(
   onProgress?: (progress: UploadProgress) => void,
 ) {
   return new Promise<void>((resolve, reject) => {
-    let firstSnapshotLogged = false;
     let unsubscribe: (() => void) | undefined;
 
     function detachListener() {
@@ -223,14 +204,6 @@ function observeUpload(
     unsubscribe = uploadTask.on(
       'state_changed',
       (snapshot) => {
-        if (__DEV__ && !firstSnapshotLogged) {
-          firstSnapshotLogged = true;
-          console.log('[media-upload] FIRST FIREBASE SNAPSHOT', {
-            bytesTransferred: snapshot.bytesTransferred,
-            totalBytes: snapshot.totalBytes,
-          });
-        }
-
         const rawProgress =
           snapshot.totalBytes > 0
             ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100
@@ -270,7 +243,7 @@ export function startMediaUpload({
   let cancelRequested = false;
 
   const completion = (async () => {
-    const file = getValidatedLocalVideoFile(media, objectPath);
+    const file = getValidatedLocalVideoFile(media);
     let blob: Blob | null = null;
 
     try {
@@ -282,14 +255,6 @@ export function startMediaUpload({
       }
 
       blob = await uriToBlob(file.uri);
-
-      if (__DEV__) {
-        console.log('[media-upload] BLOB READY', {
-          fileSize: file.size,
-          blobSize: blob.size,
-          blobType: blob.type,
-        });
-      }
 
       if (blob.size !== file.size) {
         throw new MediaUploadError(
@@ -310,12 +275,6 @@ export function startMediaUpload({
         blob,
         { contentType: VIDEO_CONTENT_TYPE },
       );
-
-      if (__DEV__) {
-        console.log('[media-upload] Firebase upload task created', {
-          objectPath,
-        });
-      }
 
       await observeUpload(uploadTask, onProgress);
     } finally {

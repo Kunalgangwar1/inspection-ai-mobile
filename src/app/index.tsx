@@ -72,7 +72,6 @@ export default function HomeScreen() {
         <View style={styles.accent} />
         <Text style={styles.title}>AI Inspection</Text>
         <Text style={styles.subtitle}>Mobile Frontend</Text>
-        <Text style={styles.status}>Phase 1 - Environment Ready</Text>
         <Text style={styles.account}>
           Signed in as {user?.email ?? 'authenticated user'}
         </Text>
@@ -149,18 +148,6 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     fontSize: 22,
     fontWeight: '500',
-    textAlign: 'center',
-  },
-  status: {
-    marginTop: 32,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    overflow: 'hidden',
-    borderRadius: 999,
-    backgroundColor: '#DBEAFE',
-    color: '#1D4ED8',
-    fontSize: 15,
-    fontWeight: '600',
     textAlign: 'center',
   },
   account: {

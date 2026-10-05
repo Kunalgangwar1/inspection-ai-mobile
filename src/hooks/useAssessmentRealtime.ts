@@ -10,6 +10,8 @@ import { AREAS, type AreaId } from '@/constants/areas';
 import { db } from '@/services/firebase';
 import type { EvidenceState } from '@/services/taxonomy';
 
+const SAFE_ASSESSMENT_ID_PATTERN = /^[A-Za-z0-9-]+$/;
+
 export type EvidenceResult = EvidenceState;
 export type UserOverrides = Record<string, EvidenceState>;
 export type CompletedAreas = Partial<Record<AreaId, Timestamp>>;
@@ -96,10 +98,15 @@ export function useAssessmentRealtime(
   assessmentId: string,
   listenerKey: string | null,
 ) {
+  const hasValidAssessmentId =
+    SAFE_ASSESSMENT_ID_PATTERN.test(assessmentId);
+  const subscriptionKey = listenerKey
+    ? `${assessmentId}:${listenerKey}`
+    : null;
   const [state, setState] = useState<ListenerState>(EMPTY_LISTENER_STATE);
 
   useEffect(() => {
-    if (!listenerKey) {
+    if (!subscriptionKey || !hasValidAssessmentId) {
       return;
     }
 
@@ -114,7 +121,7 @@ export function useAssessmentRealtime(
         }
 
         setState({
-          listenerKey,
+          listenerKey: subscriptionKey,
           result: parseAssessmentResult(
             snapshot.exists() ? snapshot.data() : undefined,
           ),
@@ -123,16 +130,24 @@ export function useAssessmentRealtime(
       },
       () => {
         setState({
-          listenerKey,
+          listenerKey: subscriptionKey,
           result: null,
           error:
             'Unable to receive analysis updates from Firestore. Please try again.',
         });
       },
     );
-  }, [assessmentId, listenerKey]);
+  }, [assessmentId, hasValidAssessmentId, subscriptionKey]);
 
-  return listenerKey && state.listenerKey === listenerKey
+  if (subscriptionKey && !hasValidAssessmentId) {
+    return {
+      listenerKey: subscriptionKey,
+      result: null,
+      error: 'The assessment link is invalid.',
+    };
+  }
+
+  return subscriptionKey && state.listenerKey === subscriptionKey
     ? state
     : EMPTY_LISTENER_STATE;
 }

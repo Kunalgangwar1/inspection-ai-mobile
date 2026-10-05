@@ -3,8 +3,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 const LOCAL_MEDIA_DIRECTORY_NAME = 'inspection-media';
 const VIDEO_CONTENT_TYPE = 'video/mp4';
-
-export type LocalMediaSource = 'camera' | 'picker';
+const STABLE_VIDEO_FILE_NAME_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.mp4$/i;
 
 export type StableLocalVideo = Readonly<{
   uri: string;
@@ -20,46 +20,17 @@ class LocalMediaPersistenceError extends Error {
   }
 }
 
-function logSourceVideo(
-  sourceKind: LocalMediaSource,
-  originalUri: string,
-  source: File,
-) {
-  if (!__DEV__) {
-    return;
-  }
-
-  console.log(
-    `[local-media] ${sourceKind === 'camera' ? 'CAMERA SOURCE' : 'PICKER SOURCE'}`,
-    {
-      originalUri,
-      exists: source.exists,
-      size: source.size,
-      type: source.type,
-    },
+export function isStableLocalVideoFileName(
+  value: unknown,
+): value is string {
+  return (
+    typeof value === 'string' &&
+    STABLE_VIDEO_FILE_NAME_PATTERN.test(value)
   );
-}
-
-function logCopiedVideo(
-  sourceKind: LocalMediaSource,
-  destination: File,
-) {
-  if (!__DEV__) {
-    return;
-  }
-
-  console.log('[local-media] COPIED FILE', {
-    source: sourceKind,
-    stableUri: destination.uri,
-    exists: destination.exists,
-    size: destination.size,
-    type: destination.type,
-  });
 }
 
 export async function persistLocalVideo(
   originalUri: string,
-  sourceKind: LocalMediaSource,
 ): Promise<StableLocalVideo> {
   if (!originalUri) {
     throw new LocalMediaPersistenceError(
@@ -69,7 +40,6 @@ export async function persistLocalVideo(
 
   try {
     const source = new File(originalUri);
-    logSourceVideo(sourceKind, originalUri, source);
 
     if (!source.exists) {
       throw new LocalMediaPersistenceError(
@@ -100,7 +70,6 @@ export async function persistLocalVideo(
     const destination = new File(mediaDirectory, fileName);
 
     await source.copy(destination);
-    logCopiedVideo(sourceKind, destination);
 
     if (!destination.exists) {
       throw new LocalMediaPersistenceError(
@@ -123,7 +92,7 @@ export async function persistLocalVideo(
     return {
       uri: destination.uri,
       fileName,
-      mimeType: destination.type || VIDEO_CONTENT_TYPE,
+      mimeType: source.type || destination.type || VIDEO_CONTENT_TYPE,
       fileSize: destination.size,
     };
   } catch (error) {

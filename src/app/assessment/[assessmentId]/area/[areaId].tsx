@@ -23,6 +23,7 @@ import {
 import {
   getLocalMediaErrorMessage,
   persistLocalVideo,
+  isStableLocalVideoFileName,
   type StableLocalVideo,
 } from '@/services/localMedia';
 import {
@@ -43,6 +44,7 @@ type UploadViewState = Readonly<{
   mediaUri: string | null;
   status: UploadStatus;
   objectPath: string | null;
+  completionBaselineMillis: number | null;
   error: string | null;
 }>;
 
@@ -50,6 +52,7 @@ const EMPTY_UPLOAD_STATE: UploadViewState = {
   mediaUri: null,
   status: 'idle',
   objectPath: null,
+  completionBaselineMillis: null,
   error: null,
 };
 
@@ -99,39 +102,42 @@ export default function AreaScreen() {
     useState<UploadViewState>(EMPTY_UPLOAD_STATE);
   const [uploadProgress, setUploadProgress] = useState(0);
   const uploadOperationRef = useRef<MediaUploadOperation | null>(null);
-  const uploadProgressRef = useRef(0);
   const mountedRef = useRef(true);
   const recordedVideo = useMemo<MediaFile | null>(() => {
-    if (!recordedFileName) {
+    if (!isStableLocalVideoFileName(recordedFileName)) {
       return null;
     }
 
-    const mediaDirectory = new Directory(
-      Paths.document,
-      'inspection-media',
-    );
-    const recordedFile = new File(mediaDirectory, recordedFileName);
-    const fileExists = recordedFile.exists;
-    const fileSize = recordedFile.size;
-    const fileType = recordedFile.type;
+    try {
+      const mediaDirectory = new Directory(
+        Paths.document,
+        'inspection-media',
+      );
+      const recordedFile = new File(mediaDirectory, recordedFileName);
+      const fileSize = recordedFile.size;
 
-    if (__DEV__) {
-      console.log('[area] RECONSTRUCTED RECORDING', {
-        fileName: recordedFileName,
+      if (
+        !recordedFile.exists ||
+        !Number.isFinite(fileSize) ||
+        fileSize <= 0
+      ) {
+        return null;
+      }
+
+      return {
         uri: recordedFile.uri,
-        exists: fileExists,
-        size: fileSize,
-        type: fileType,
-      });
+        fileName: recordedFileName,
+        mimeType: recordedFile.type || 'video/mp4',
+        fileSize,
+      };
+    } catch {
+      return null;
     }
-
-    return {
-      uri: recordedFile.uri,
-      fileName: recordedFileName,
-      mimeType: fileType || 'video/mp4',
-      ...(fileExists && fileSize > 0 ? { fileSize } : {}),
-    };
   }, [recordedFileName]);
+  const recordedVideoError =
+    recordedFileName && !recordedVideo
+      ? 'The recorded video is no longer available. Record another video.'
+      : null;
   const selectedVideo = recordedVideo ?? localVideo;
   const currentUploadState =
     uploadState.mediaUri === (selectedVideo?.uri ?? null)
@@ -146,20 +152,28 @@ export default function AreaScreen() {
   );
   const progressWidth =
     `${Math.round(displayedProgress)}%` as `${number}%`;
-  const resultListenerKey =
-    currentUploadState.status === 'complete'
-      ? currentUploadState.objectPath
-      : null;
   const assessmentRealtime = useAssessmentRealtime(
     assessmentId,
-    resultListenerKey,
+    area ? `area:${area.id}` : null,
   );
-  const analysisComplete =
-    typeof assessmentRealtime.result?.evaluation_id === 'string' &&
-    assessmentRealtime.result.evaluation_id.length > 0 &&
-    assessmentRealtime.result.results !== undefined;
   const analysisResults = assessmentRealtime.result?.results;
   const userOverrides = assessmentRealtime.result?.userOverrides;
+  const areaCompletionMillis = area
+    ? assessmentRealtime.result?.completedAreas[area.id]?.toMillis()
+    : undefined;
+  const areaCompleted = areaCompletionMillis !== undefined;
+  const completionMatchesCurrentUpload =
+    currentUploadState.status !== 'complete' ||
+    (areaCompletionMillis !== undefined &&
+      areaCompletionMillis !==
+        currentUploadState.completionBaselineMillis);
+  const analysisComplete =
+    areaCompleted &&
+    completionMatchesCurrentUpload &&
+    analysisResults !== undefined;
+  const showAnalysis =
+    currentUploadState.status === 'complete' ||
+    (areaCompleted && !isUploading);
   const mappedAreaResults = useMemo(
     () =>
       analysisComplete && analysisResults && area
@@ -192,7 +206,6 @@ export default function AreaScreen() {
   async function selectVideo() {
     setIsPicking(true);
     setPickerError(null);
-    resetUploadState();
 
     try {
       let permission = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -234,8 +247,9 @@ export default function AreaScreen() {
         return;
       }
 
-      const stableVideo = await persistLocalVideo(asset.uri, 'picker');
+      const stableVideo = await persistLocalVideo(asset.uri);
 
+      resetUploadState();
       setLocalVideo(normalizeVideo(asset, stableVideo));
       router.setParams({ recordedFileName: undefined });
     } catch (error) {
@@ -259,7 +273,6 @@ export default function AreaScreen() {
 
   function recordVideo() {
     setPickerError(null);
-    resetUploadState();
     router.push({
       pathname: '/assessment/[assessmentId]/area/camera',
       params: { assessmentId, areaId },
@@ -290,16 +303,28 @@ export default function AreaScreen() {
       return;
     }
 
+    if (!assessmentRealtime.result) {
+      setUploadState({
+        ...EMPTY_UPLOAD_STATE,
+        mediaUri: selectedVideo.uri,
+        status: 'error',
+        error: 'The assessment is still loading. Please try again.',
+      });
+      return;
+    }
+
     const mediaUri = selectedVideo.uri;
+    const completionBaselineMillis =
+      assessmentRealtime.result.completedAreas[area.id]?.toMillis() ??
+      null;
     let operation: MediaUploadOperation | null = null;
-    let previousBytesTransferred: number | null = null;
 
     try {
       operation = startMediaUpload({
         assessmentId,
         areaId: area.id,
         media: selectedVideo,
-        onProgress: ({ bytesTransferred, totalBytes, percentage }) => {
+        onProgress: ({ percentage }) => {
           if (
             !mountedRef.current ||
             !operation ||
@@ -309,27 +334,6 @@ export default function AreaScreen() {
           }
 
           const activeOperation = operation;
-          const bytesTransferredDecreased =
-            previousBytesTransferred !== null &&
-            bytesTransferred < previousBytesTransferred;
-          previousBytesTransferred = bytesTransferred;
-          const previousDisplayedProgress = uploadProgressRef.current;
-          uploadProgressRef.current = Math.max(
-            previousDisplayedProgress,
-            percentage,
-          );
-
-          if (__DEV__) {
-            console.log('[media-upload] progress', {
-              operationId: activeOperation.fileId,
-              objectPath: activeOperation.objectPath,
-              bytesTransferred,
-              totalBytes,
-              calculatedProgress: percentage,
-              previousDisplayedProgress,
-              bytesTransferredDecreased,
-            });
-          }
 
           setUploadProgress((previous) => {
             if (uploadOperationRef.current !== activeOperation) {
@@ -342,12 +346,12 @@ export default function AreaScreen() {
       });
 
       uploadOperationRef.current = operation;
-      uploadProgressRef.current = 0;
       setUploadProgress(0);
       setUploadState({
         mediaUri,
         status: 'uploading',
         objectPath: operation.objectPath,
+        completionBaselineMillis,
         error: null,
       });
 
@@ -360,12 +364,12 @@ export default function AreaScreen() {
         return;
       }
 
-      uploadProgressRef.current = 100;
       setUploadProgress(100);
       setUploadState({
         mediaUri,
         status: 'complete',
         objectPath: operation.objectPath,
+        completionBaselineMillis,
         error: null,
       });
     } catch (error: unknown) {
@@ -485,9 +489,9 @@ export default function AreaScreen() {
                 </Text>
               )}
 
-              {pickerError ? (
+              {pickerError || recordedVideoError ? (
                 <Text accessibilityRole="alert" style={styles.errorText}>
-                  {pickerError}
+                  {pickerError ?? recordedVideoError}
                 </Text>
               ) : null}
 
@@ -617,19 +621,19 @@ export default function AreaScreen() {
                 </Text>
               ) : null}
 
-              {currentUploadState.status === 'complete' ? (
+              {assessmentRealtime.error ? (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {assessmentRealtime.error}
+                </Text>
+              ) : null}
+
+              {showAnalysis ? (
                 <View style={styles.analysisSection}>
                   <Text style={styles.analysisHeading}>
                     {analysisComplete
                       ? 'Analysis complete'
                       : 'Processing...'}
                   </Text>
-
-                  {assessmentRealtime.error ? (
-                    <Text accessibilityRole="alert" style={styles.errorText}>
-                      {assessmentRealtime.error}
-                    </Text>
-                  ) : null}
 
                   {analysisComplete && !hasAnyResults ? (
                     <Text style={styles.analysisMessage}>
@@ -639,8 +643,7 @@ export default function AreaScreen() {
 
                   {analysisComplete &&
                   hasAnyResults &&
-                  mappedAreaResults?.groups.length === 0 &&
-                  mappedAreaResults.unknownEvidence.length === 0 ? (
+                  mappedAreaResults?.groups.length === 0 ? (
                     <Text style={styles.analysisMessage}>
                       No clear evidence was identified for this area.
                     </Text>
@@ -685,61 +688,6 @@ export default function AreaScreen() {
                       </View>
                     </View>
                   ))}
-
-                  {mappedAreaResults &&
-                  mappedAreaResults.unknownEvidence.length > 0 ? (
-                    <View style={styles.itemGroup}>
-                      <Text style={styles.itemName}>Unmapped evidence</Text>
-
-                      <View style={styles.observationList}>
-                        {mappedAreaResults.unknownEvidence.map((evidence) => (
-                          <Pressable
-                            accessibilityRole="button"
-                            key={evidence.evidenceId}
-                            onPress={() => openEvidenceReview(evidence)}
-                            style={({ pressed }) => [
-                              styles.observationCard,
-                              pressed && styles.observationCardPressed,
-                            ]}>
-                            <Text
-                              style={[
-                                styles.evidenceResult,
-                                evidence.effectiveState === 'COMPLIANT'
-                                  ? styles.compliantResult
-                                  : styles.nonCompliantResult,
-                              ]}>
-                              {evidence.effectiveState}
-                            </Text>
-                            {evidence.overrideState !== null ? (
-                              <Text style={styles.overrideLabel}>
-                                Inspector override
-                              </Text>
-                            ) : null}
-                            <Text style={styles.observationDescription}>
-                              Unknown evidence
-                            </Text>
-                            {__DEV__ ? (
-                              <Text selectable style={styles.debugEvidenceId}>
-                                {evidence.evidenceId}
-                              </Text>
-                            ) : null}
-                            <Text style={styles.viewEvidenceText}>
-                              View evidence
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {currentUploadState.objectPath ? (
-                <View style={styles.debugSection}>
-                  <Text style={styles.debugLabel}>Storage object path</Text>
-                  <Text selectable style={styles.debugPath}>
-                    {currentUploadState.objectPath}
-                  </Text>
                 </View>
               ) : null}
             </View>
@@ -1029,11 +977,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  debugEvidenceId: {
-    color: '#6B7280',
-    fontSize: 11,
-    lineHeight: 16,
-  },
   evidenceResult: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
@@ -1050,25 +993,6 @@ const styles = StyleSheet.create({
   nonCompliantResult: {
     color: '#B91C1C',
     backgroundColor: '#FEE2E2',
-  },
-  debugSection: {
-    marginTop: 18,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#F9FAFB',
-  },
-  debugLabel: {
-    color: '#6B7280',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  debugPath: {
-    marginTop: 5,
-    color: '#4B5563',
-    fontSize: 11,
-    lineHeight: 16,
   },
   buttonPressed: {
     opacity: 0.8,

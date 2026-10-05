@@ -1,6 +1,6 @@
 # AI Inspection Mobile
 
-Phase 1 mobile frontend built with React Native, Expo, TypeScript, and Expo Router.
+Android inspection frontend built with React Native, Expo, TypeScript, and Expo Router.
 
 ## Get started
 

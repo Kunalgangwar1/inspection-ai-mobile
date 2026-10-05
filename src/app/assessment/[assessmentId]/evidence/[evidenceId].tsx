@@ -20,6 +20,7 @@ import {
 } from '@/services/assessmentOverrides';
 import {
   getEvidenceSegments,
+  EvidenceSegmentsError,
   type EvidenceSegment,
 } from '@/services/evidenceSegments';
 import {
@@ -99,6 +100,7 @@ export default function EvidenceReviewScreen() {
   const [segments, setSegments] = useState<readonly EvidenceSegment[]>([]);
   const [selectedClipIndex, setSelectedClipIndex] = useState(0);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [clipError, setClipError] = useState<string | null>(null);
   const [isSavingOverride, setIsSavingOverride] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -138,6 +140,7 @@ export default function EvidenceReviewScreen() {
     setSegments([]);
     setSelectedClipIndex(0);
     setPlaybackFailed(false);
+    setClipError(null);
 
     try {
       const response = await getEvidenceSegments(assessmentId, evidenceId);
@@ -148,12 +151,17 @@ export default function EvidenceReviewScreen() {
 
       setSegments(response.segments);
       setLoadStatus(response.segments.length > 0 ? 'ready' : 'empty');
-    } catch {
+    } catch (error: unknown) {
       if (requestIdRef.current !== requestId) {
         return;
       }
 
       setLoadStatus('error');
+      setClipError(
+        error instanceof EvidenceSegmentsError
+          ? error.message
+          : 'Unable to load evidence clip.',
+      );
     }
   }, [assessmentId, evidenceId]);
 
@@ -324,7 +332,9 @@ export default function EvidenceReviewScreen() {
             {loadStatus === 'error' || playbackFailed ? (
               <View style={styles.centeredState}>
                 <Text accessibilityRole="alert" style={styles.errorText}>
-                  Unable to load evidence clip.
+                  {playbackFailed
+                    ? 'Evidence clip playback failed. Retry to request a fresh clip.'
+                    : clipError ?? 'Unable to load evidence clip.'}
                 </Text>
                 <Pressable
                   accessibilityRole="button"

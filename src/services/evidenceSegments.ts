@@ -124,13 +124,6 @@ export async function getEvidenceSegments(
     evidence_id: normalizedEvidenceId,
   });
 
-  if (__DEV__) {
-    console.log('[evidence-segments] request started', {
-      assessmentId: normalizedAssessmentId,
-      evidenceId: normalizedEvidenceId,
-    });
-  }
-
   let response: Response;
 
   try {
@@ -145,10 +138,6 @@ export async function getEvidenceSegments(
       'network',
       'The evidence clip could not be loaded. Check your connection and retry.',
     );
-  }
-
-  if (__DEV__) {
-    console.log('[evidence-segments] response status', response.status);
   }
 
   if (!response.ok) {
@@ -191,10 +180,6 @@ export async function getEvidenceSegments(
         typeof segment.segment_path === 'string' ? segment.segment_path : '',
     };
   });
-
-  if (__DEV__) {
-    console.log('[evidence-segments] segment count', segments.length);
-  }
 
   return {
     segments,

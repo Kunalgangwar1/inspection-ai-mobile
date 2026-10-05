@@ -175,7 +175,7 @@ export default function CameraScreen() {
         return;
       }
 
-      const stableVideo = await persistLocalVideo(result.uri, 'camera');
+      const stableVideo = await persistLocalVideo(result.uri);
 
       if (discardRecordingRef.current) {
         if (mountedRef.current) {
